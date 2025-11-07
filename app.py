@@ -3,33 +3,45 @@ from flask_cors import CORS
 import json
 import os
 import hashlib
-from flask_sqlalchemy import SQLAlchemy # NOVO: Importa o DB
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import or_
 
 app = Flask(__name__)
 CORS(app)
 
 CONTRACT_JSON_PATH = 'contract.json'
-RELAYER_ADDRESS = "0x21dcfc33545acecf7bffa27b33261deeb6667622"
+RELAYER_ADDRESS = "0x21dcfc33545acecf7bffa27b33261deeb6667622" 
 
-# --- NOVO: Configuração do Banco de Dados SQLite ---
-# 'app.root_path' é a pasta onde o app.py está.
-# O banco 'votacoes.db' será criado lá.
+# --- Configuração do Banco de Dados SQLite ---
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'votacoes.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# --- NOVO: Definição do Modelo do Banco de Dados ---
-# Isso define a "tabela" onde as votações serão salvas.
+# --- Modelos do Banco de Dados ---
+
 class Votacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     campus = db.Column(db.String(100), nullable=False)
     curso = db.Column(db.String(100), nullable=False)
     sigaa_link = db.Column(db.String(255), nullable=False)
-    admin_wallet = db.Column(db.String(42), nullable=False) # Carteira do Proponente
-    contract_address = db.Column(db.String(42), nullable=False, unique=True) # Endereço do Contrato
+    admin_wallet = db.Column(db.String(42), nullable=False) 
+    contract_address = db.Column(db.String(42), nullable=False, unique=True)
+    
+    # NOVO: Relacionamento para que Votacao.chapas funcione
+    chapas = db.relationship('Chapa', backref='votacao', lazy=True)
+
+# NOVO: Tabela para armazenar as chapas inscritas
+class Chapa(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome_chapa = db.Column(db.String(100), nullable=False)
+    proposta = db.Column(db.Text, nullable=False)
+    numero_chapa = db.Column(db.Integer, nullable=False) # Gerado pelo sistema
+    
+    # Chave estrangeira para linkar a chapa à sua votação
+    votacao_id = db.Column(db.Integer, db.ForeignKey('votacao.id'), nullable=False)
+
 
 # --- Lógica da Merkle Tree (Sem mudanças) ---
-
 def _hash_pair(left: str, right: str) -> str:
     return hashlib.sha256((left + right).encode('utf-8')).hexdigest()
 
@@ -61,7 +73,7 @@ def _simular_scraping_sigaa(sigaa_link: str) -> list[str]:
         "20239005810", "20179128705", "20259019706", "20229047951"
     ]
 
-# --- Rota 1 (Sem mudanças) ---
+# --- Rota 1 (Prepare Deploy) (Sem mudanças) ---
 @app.route('/api/prepare-deploy', methods=['POST'])
 def prepare_deploy_info():
     data = request.json
@@ -90,11 +102,10 @@ def prepare_deploy_info():
         )
     except Exception as e: abort(500, description=f"Erro ao ler o arquivo: {e}")
 
-# --- ROTA 2 (ATUALIZADA PARA USAR O BANCO DE DADOS) ---
+# --- Rota 2 (Criar Votação) (Sem mudanças) ---
 @app.route('/api/criar-votacao', methods=['POST'])
 def criar_votacao():
     data = request.json
-    
     sigaa_link = data.get('sigaa_link')
     admin_wallet = data.get('admin_wallet')
     contract_address = data.get('contract_address')
@@ -104,7 +115,6 @@ def criar_votacao():
     if not all([sigaa_link, admin_wallet, contract_address, campus, curso]):
         abort(400, description="Dados incompletos recebidos.")
 
-    # NOVO: Salva os dados no banco de dados
     try:
         nova_votacao = Votacao(
             campus=campus,
@@ -120,20 +130,101 @@ def criar_votacao():
         print(f"Erro ao salvar no DB: {e}")
         abort(500, description="Erro ao salvar dados no banco.")
 
-    # Imprime no console (como antes) para confirmar
-    print("\n===================================")
-    print("SALVO COM SUCESSO NO BANCO 'votacoes.db':")
-    print(f"  Campus: {campus}")
-    print(f"  Curso: {curso}")
-    print(f"  Contrato: {contract_address}")
-    print("===================================\n")
-
+    print("\n[SALVO NO DB]:", data)
     return jsonify(message="Votação salva com sucesso no banco de dados!"), 201
+
+# --- Rota 3 (Listar Votações) (Sem mudanças) ---
+@app.route('/api/votacoes', methods=['GET'])
+def get_votacoes():
+    try:
+        search_term = request.args.get('search', '') 
+        query = Votacao.query
+        
+        if search_term:
+            search_filter = f"%{search_term}%"
+            query = query.filter(
+                or_(
+                    Votacao.campus.ilike(search_filter),
+                    Votacao.curso.ilike(search_filter),
+                    Votacao.admin_wallet.ilike(search_filter)
+                )
+            )
+            
+        votacoes = query.order_by(Votacao.id.desc()).all()
+        
+        resultado = []
+        for votacao in votacoes:
+            resultado.append({
+                "id": votacao.id,
+                "campus": votacao.campus,
+                "curso": votacao.curso,
+                "admin_wallet": votacao.admin_wallet,
+                "contract_address": votacao.contract_address
+            })
+            
+        return jsonify(resultado), 200
+        
+    except Exception as e:
+        print(f"Erro ao buscar votações: {e}")
+        abort(500, description="Erro ao buscar dados no servidor.")
+
+
+# --- NOVO: ROTA 4 - Inscrever Chapa ---
+@app.route('/api/inscrever-chapa', methods=['POST'])
+def inscrever_chapa():
+    data = request.json
+    contract_address = data.get('contract_address')
+    chapa_name = data.get('chapa_name')
+    chapa_proposal = data.get('chapa_proposal')
+
+    if not all([contract_address, chapa_name, chapa_proposal]):
+        abort(400, description="Dados incompletos para inscrever chapa.")
+
+    try:
+        # 1. Encontra a votação pai no banco de dados
+        votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+        if not votacao:
+            abort(404, description="Votação não encontrada.")
+            
+        # 2. LÓGICA DE NEGÓCIO: Calcula o número da chapa
+        # Conta quantas chapas *já existem* para esta votação
+        numero_atual = Chapa.query.filter_by(votacao_id=votacao.id).count()
+        novo_numero_chapa = numero_atual + 1
+
+        # 3. Cria o novo objeto Chapa
+        nova_chapa = Chapa(
+            nome_chapa=chapa_name,
+            proposta=chapa_proposal,
+            numero_chapa=novo_numero_chapa,
+            votacao_id=votacao.id # Linka com a Votacao
+        )
+        
+        # 4. Salva no banco de dados
+        db.session.add(nova_chapa)
+        db.session.commit()
+
+        print("\n===================================")
+        print("NOVA CHAPA INSCRITA NO BANCO:")
+        print(f"  Votação ID: {votacao.id} ({votacao.campus})")
+        print(f"  Nome Chapa: {chapa_name}")
+        print(f"  Número Gerado: {novo_numero_chapa}")
+        print("===================================\n")
+
+        # 5. Retorna sucesso com o número gerado
+        return jsonify(
+            message="Chapa inscrita com sucesso!",
+            numero_chapa=novo_numero_chapa
+        ), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao inscrever chapa: {e}")
+        abort(500, description="Erro interno ao salvar a chapa.")
 
 
 if __name__ == '__main__':
-    # NOVO: Cria o arquivo do banco de dados (se não existir)
     with app.app_context():
+        # Isso irá criar as tabelas 'votacao' E 'chapa' se não existirem
         db.create_all()
     
     app.run(debug=True, port=5000)
