@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Votação</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.1/ethers.umd.min.js" xintegrity="sha512-4sQxQGfEEjM2CZ1aX9G3IbYmF/KsTQGglfobc/2iI/0RJEl57dSH/xL3N05e7t1D/94PzO/x/3cK/lG/2/7Jg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <main class="min-h-screen flex flex-col justify-center items-center p-4 sm:p-8">
+        
+        <div id="home-screen" class="w-full max-w-lg text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+                Bem-vindo ao Sistema de Votação
+            </h1>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <a href="#" id="btn-show-create" class="w-full sm:w-auto flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 text-center">
+                    Criar Votação
+                </a>
+                <a href="#" class="w-full sm:w-auto flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 text-center">
+                    Participar de Votação
+                </a>
+            </div>
+        </div>
+
+        <div id="create-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Criar Nova Votação
+            </h2>
+
+            <form id="create-poll-form" class="space-y-4">
+                
+                <div class="border-b pb-4 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">1. Identificação</h3>
+                    
+                    <div>
+                        <label for="campus-name" class="block text-sm font-medium text-gray-700 mb-2">
+                            Campus (Ex: Ministro Petrônio Portela)
+                        </label>
+                        <input type="text" id="campus-name" name="campus-name"
+                                placeholder="Ministro Petrônio Portela"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               required>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <label for="curso-name" class="block text-sm font-medium text-gray-700 mb-2">
+                            Centro / Curso (Ex: CCN/Odontologia)
+                        </label>
+                        <input type="text" id="curso-name" name="curso-name"
+                                placeholder="CCN/Odontologia"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               required>
+                    </div>
+                </div>
+
+                <div class="border-b pb-4 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Configuração (Blockchain)</h3>
+
+                    <div>
+                        <label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">
+                            Link do SIGAA com Alunos Ativos:
+                        </label>
+                        <input type="url" id="sigaa-link" name="sigaa-link"
+                               placeholder="https://sigaa.ufpi.br/..."
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                               required>
+                    </div>
+
+                    <input type="hidden" id="wallet-address" name="wallet-address">
+
+                    <div class="mt-4">
+                        <button type="button" id="btn-connect-metamask"
+                                class="w-full flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                            
+                            <img 
+                            src="https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg" 
+                            alt="Logo MetaMask" 
+                            class="w-6 h-6 mr-3">
+                            
+                            <span>Conectar Conta (Proponente)</span>
+                        </button>
+                    </div>
+
+                    <div id="metamask-status" class="text-sm text-center font-medium mt-2"></div>
+                </div>
+
+
+                <div>
+                    <button type="submit" id="btn-submit-poll"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled>
+                        Fazer Deploy da Votação
+                    </button>
+                </div>
+
+                <button type="button" id="btn-back-home" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                    &larr; Voltar para o Início
+                </button>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // Seleciona os elementos
+            const homeScreen = document.getElementById('home-screen');
+            const createScreen = document.getElementById('create-screen');
+            const btnShowCreate = document.getElementById('btn-show-create');
+            const btnBackHome = document.getElementById('btn-back-home');
+            const btnConnectMetamask = document.getElementById('btn-connect-metamask');
+            const metamaskStatus = document.getElementById('metamask-status');
+            const createPollForm = document.getElementById('create-poll-form');
+            const walletAddressInput = document.getElementById('wallet-address');
+            const btnSubmitPoll = document.getElementById('btn-submit-poll');
+
+            // --- Lógica de navegação ---
+            btnShowCreate.addEventListener('click', (evento) => {
+                evento.preventDefault();
+                homeScreen.classList.add('hidden');
+                createScreen.classList.remove('hidden');
+            });
+            btnBackHome.addEventListener('click', () => {
+                createScreen.classList.add('hidden');
+                homeScreen.classList.remove('hidden');
+            });
+
+            // --- Lógica de Conexão MetaMask ---
+            btnConnectMetamask.addEventListener('click', async () => {
+                metamaskStatus.textContent = 'Abrindo o MetaMask...';
+                metamaskStatus.classList.remove('text-red-500', 'text-green-600');
+                metamaskStatus.classList.add('text-blue-600');
+                
+                if (typeof window.ethereum !== 'undefined') {
+                    try {
+                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        const account = accounts[0];
+                        console.log("Conta conectada:", account);
+
+                        metamaskStatus.textContent = `Conectado: ${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
+                        metamaskStatus.classList.remove('text-blue-600', 'text-red-500');
+                        metamaskStatus.classList.add('text-green-600');
+                        
+                        walletAddressInput.value = account;
+                        btnConnectMetamask.querySelector('span').textContent = 'Conta Conectada';
+                        btnConnectMetamask.disabled = true;
+                        btnSubmitPoll.disabled = false;
+
+                    } catch (err) {
+                        console.error("Erro ao conectar:", err);
+                        let errorMsg = 'Erro ao conectar.';
+                        if (err.code === 4001) { errorMsg = 'Você rejeitou a conexão.'; }
+                        metamaskStatus.textContent = errorMsg;
+                        metamaskStatus.classList.remove('text-blue-600', 'text-green-600');
+                        metamaskStatus.classList.add('text-red-500');
+                    }
+                } else {
+                    metamaskStatus.textContent = 'Erro: Por favor, instale a extensão MetaMask.';
+                    metamaskStatus.classList.remove('text-blue-600', 'text-green-600');
+                    metamaskStatus.classList.add('text-red-500');
+                }
+            });
+
+            // --- Lógica de Submit (Deploy) ---
+            createPollForm.addEventListener('submit', async (evento) => {
+                evento.preventDefault(); 
+                
+                btnSubmitPoll.textContent = 'Enviando...';
+                btnSubmitPoll.disabled = true;
+                metamaskStatus.classList.remove('text-red-500', 'text-green-600');
+                
+                // Lendo TODOS os campos do formulário
+                const sigaaLink = document.getElementById('sigaa-link').value;
+                const adminAddress = walletAddressInput.value;
+                const campusName = document.getElementById('campus-name').value; // NOVO
+                const cursoName = document.getElementById('curso-name').value;  // NOVO
+
+                console.log("Iniciando processo de deploy...");
+
+                try {
+                    // ETAPA 1: Buscar dados do contrato E Merkle Root do Backend Flask
+                    metamaskStatus.textContent = 'Gerando Merkle Root no servidor...';
+                    metamaskStatus.classList.add('text-blue-600');
+                    
+                    const responseInfo = await fetch('http://127.0.0.1:5000/api/prepare-deploy', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sigaa_link: sigaaLink })
+                    });
+                    
+                    if (!responseInfo.ok) {
+                        const errData = await responseInfo.json();
+                        throw new Error(errData.description || 'Falha ao buscar dados do backend.');
+                    }
+                    
+                    const { abi, bytecode, merkleRoot, relayerAddress } = await responseInfo.json();
+                    
+                    console.log("ABI, Bytecode, MerkleRoot e RelayerAddress recebidos.");
+
+                    // ETAPA 2: Conectar ao MetaMask e preparar o Deploy
+                    metamaskStatus.textContent = 'Abra o MetaMask para aprovar o deploy...';
+                    
+                    const provider = new ethers.BrowserProvider(window.ethereum);
+                    const signer = await provider.getSigner(); 
+                    const factory = new ethers.ContractFactory(abi, bytecode, signer);
+
+                    // ETAPA 3: Fazer o Deploy (Proponente Paga o Gás)
+                    console.log(`Fazendo deploy com os argumentos (MerkleRoot, RelayerAddress)`);
+                    
+                    const contract = await factory.deploy(merkleRoot, relayerAddress);
+
+                    metamaskStatus.textContent = 'Aguardando confirmação da rede...';
+                    await contract.waitForDeployment();
+                    
+                    const contractAddress = await contract.getAddress();
+                    console.log("Contrato implantado com sucesso no endereço:", contractAddress);
+
+                    // ETAPA 4: Salvar o resultado no Backend Flask (ATUALIZADO)
+                    metamaskStatus.textContent = 'Salvando dados no servidor...';
+                    
+                    const responseSave = await fetch('http://127.0.0.1:5000/api/criar-votacao', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sigaa_link: sigaaLink,
+                            admin_wallet: adminAddress,
+                            contract_address: contractAddress,
+                            campus: campusName, // NOVO: Enviando campus
+                            curso: cursoName    // NOVO: Enviando curso
+                        })
+                    });
+
+                    if (!responseSave.ok) throw new Error('Falha ao salvar dados no backend.');
+                    const dataSave = await responseSave.json();
+                    console.log("Backend respondeu:", dataSave.message);
+                    
+                    // ETAPA 5: Sucesso!
+                    metamaskStatus.textContent = `Votação criada! Contrato: ${contractAddress.substring(0, 6)}...`;
+                    metamaskStatus.classList.remove('text-blue-600', 'text-red-500');
+                    metamaskStatus.classList.add('text-green-600');
+                    btnSubmitPoll.textContent = 'Votação Criada!';
+
+                } catch (err) {
+                    console.error("Erro no processo de deploy:", err);
+                    let errorMsg = 'Erro desconhecido.';
+                    if (err.code === 'ACTION_REJECTED') { 
+                        errorMsg = 'Você rejeitou a transação no MetaMask.';
+                    } else if (err.message) {
+                        errorMsg = err.message;
+                    }
+                    
+                    metamaskStatus.textContent = errorMsg;
+                    metamaskStatus.classList.remove('text-blue-600', 'text-green-600');
+                    metamaskStatus.classList.add('text-red-500');
+                    btnSubmitPoll.textContent = 'Criar Votação';
+                    btnSubmitPoll.disabled = false;
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
