@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Votação</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.1/ethers.umd.min.js" xintegrity="sha512-4sQxQGfEEjM2CZ1aX9G3IbYmF/KsTQGglfobc/2iI/0RJEl57dSH/xL3N05e7t1D/94PzO/x/3cK/lG/2/7Jg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -34,152 +32,81 @@
         </div>
 
         <div id="create-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
-            
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Criar Nova Votação
-            </h2>
-
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Criar Nova Votação</h2>
             <form id="create-poll-form" class="space-y-4">
-                
-                <div class="border-b pb-4 mb-4">
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">1. Identificação</h3>
-                    
-                    <div>
-                        <label for="campus-name" class="block text-sm font-medium text-gray-700 mb-2">
-                            Campus (Ex: Ministro Petrônio Portela)
-                        </label>
-                        <input type="text" id="campus-name" name="campus-name"
-                                placeholder="Ministro Petrônio Portela"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                               required>
-                    </div>
-                    
-                    <div class="mt-4">
-                        <label for="curso-name" class="block text-sm font-medium text-gray-700 mb-2">
-                            Centro / Curso (Ex: CCN/Odontologia)
-                        </label>
-                        <input type="text" id="curso-name" name="curso-name"
-                                placeholder="CCN/Odontologia"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                               required>
-                    </div>
-                </div>
-
-                <div class="border-b pb-4 mb-4">
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Configuração (Blockchain)</h3>
-
-                    <div>
-                        <label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">
-                            Link do SIGAA com Alunos Ativos:
-                        </label>
-                        <input type="url" id="sigaa-link" name="sigaa-link"
-                               placeholder="https://sigaa.ufpi.br/..."
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                               required>
-                    </div>
-
-                    <input type="hidden" id="wallet-address" name="wallet-address">
-
-                    <div class="mt-4">
-                        <button type="button" id="btn-connect-metamask"
-                                class="w-full flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
-                            
-                            <img 
-                            src="https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg" 
-                            alt="Logo MetaMask" 
-                            class="w-6 h-6 mr-3">
-                            
-                            <span>Conectar Conta (Proponente)</span>
-                        </button>
-                    </div>
-
-                    <div id="metamask-status" class="text-sm text-center font-medium mt-2"></div>
-                </div>
-
-
-                <div>
-                    <button type="submit" id="btn-submit-poll"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled>
-                        Fazer Deploy da Votação
-                    </button>
-                </div>
-
-                <button type="button" id="btn-back-home" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">
-                    &larr; Voltar para o Início
-                </button>
+                <div class="border-b pb-4 mb-4"><h3 class="text-lg font-semibold text-gray-700 mb-2">1. Identificação</h3><div><label for="campus-name" class="block text-sm font-medium text-gray-700 mb-2">Campus</label><input type="text" id="campus-name" name="campus-name" placeholder="Ministro Petrônio Portela" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></div><div class="mt-4"><label for="curso-name" class="block text-sm font-medium text-gray-700 mb-2">Centro / Curso</label><input type="text" id="curso-name" name="curso-name" placeholder="CCN/Odontologia" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></div></div>
+                <div class="border-b pb-4 mb-4"><h3 class="text-lg font-semibold text-gray-700 mb-2">2. Configuração (Blockchain)</h3><div><label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">Link do SIGAA com Alunos Ativos:</label><input type="url" id="sigaa-link" name="sigaa-link" placeholder="https://sigaa.ufpi.br/..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></div><input type="hidden" id="wallet-address" name="wallet-address"><div class="mt-4"><button type="button" id="btn-connect-metamask" class="w-full flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300"><img src="https...MetaMask-icon-fox.svg" alt="Logo MetaMask" class="w-6 h-6 mr-3"><span>Conectar Conta (Proponente)</span></button></div><div id="metamask-status" class="text-sm text-center font-medium mt-2"></div></div>
+                <div><button type="submit" id="btn-submit-poll" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Fazer Deploy da Votação</button></div>
+                <button type="button" id="btn-back-home" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para o Início</button>
             </form>
         </div>
 
         <div id="vote-screen" class="w-full max-w-2xl p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
-            
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Votações Ativas
-            </h2>
-
-            <form id="search-form" class="flex items-center gap-2 mb-6">
-                <input type="search" id="search-input"
-                       placeholder="Buscar por campus, curso ou carteira..."
-                       class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                <button type="submit"
-                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
-                    Buscar
-                </button>
-            </form>
-
-            <div id="votacoes-list" class="space-y-4">
-                </div>
-            
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Votações Ativas</h2>
+            <form id="search-form" class="flex items-center gap-2 mb-6"><input type="search" id="search-input" placeholder="Buscar por campus, curso ou carteira..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">Buscar</button></form>
+            <div id="votacoes-list" class="space-y-4"></div>
             <div id="votacoes-status" class="text-center text-gray-500 mt-4"></div>
-
-            <button type="button" id="btn-back-home-2" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
-                &larr; Voltar para o Início
-            </button>
+            <button type="button" id="btn-back-home-2" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para o Início</button>
         </div>
 
         <div id="chapa-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Inscrever Chapa</h2>
+            <form id="chapa-form" class="space-y-4"><input type="hidden" id="chapa-contract-address"><div><label for="chapa-name" class="block text-sm font-medium text-gray-700 mb-2">Nome da Chapa</label><input type="text" id="chapa-name" name="chapa-name" placeholder="Chapa 1 - Renovação Total" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></div><div><label for="chapa-proposal" class="block text-sm font-medium text-gray-700 mb-2">Proposta da Chapa</label><textarea id="chapa-proposal" name="chapa-proposal" rows="5" placeholder="Nossa proposta foca em..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></textarea></div><div id="chapa-status" class="text-sm text-center font-medium"></div><div><button type="submit" id="btn-submit-chapa" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">Enviar Inscrição</button></div>
+            <button type="button" id="btn-back-to-list" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para a Lista</button>
+            </form>
+        </div>
+
+        <div id="votar-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
             
-            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
-                Inscrever Chapa
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center" id="votar-titulo">
+                Votar em [Nome da Votação]
             </h2>
 
-            <form id="chapa-form" class="space-y-4">
+            <form id="votar-auth-form" class="space-y-4">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">1. Autenticação de Aluno</h3>
+                <p class="text-sm text-gray-600">Para votar, precisamos confirmar que você é um aluno ativo desta votação. Por favor, insira sua matrícula.</p>
                 
-                <input type="hidden" id="chapa-contract-address">
+                <input type="hidden" id="votar-contract-address">
 
                 <div>
-                    <label for="chapa-name" class="block text-sm font-medium text-gray-700 mb-2">
-                        Nome da Chapa (sem números)
+                    <label for="votar-matricula" class="block text-sm font-medium text-gray-700 mb-2">
+                        Sua Matrícula
                     </label>
-                    <input type="text" id="chapa-name" name="chapa-name"
-                           placeholder="Renovação Total"
+                    <input type="text" id="votar-matricula" name="votar-matricula"
+                           placeholder="Ex: 20209001234"
                            class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                            required>
                 </div>
 
-                <div>
-                    <label for="chapa-proposal" class="block text-sm font-medium text-gray-700 mb-2">
-                        Proposta da Chapa
-                    </label>
-                    <textarea id="chapa-proposal" name="chapa-proposal" rows="5"
-                              placeholder="Nossa proposta foca em..."
-                              class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                              required></textarea>
-                </div>
-
-                <div id="chapa-status" class="text-sm text-center font-medium"></div>
+                <div id="votar-auth-status" class="text-sm text-center font-medium"></div>
 
                 <div>
-                    <button type="submit" id="btn-submit-chapa"
+                    <button type="submit" id="btn-submit-auth"
                             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
-                        Enviar Inscrição
+                        Autenticar
                     </button>
                 </div>
-
-                <button type="button" id="btn-back-to-list" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">
-                    &larr; Voltar para a Lista
-                </button>
             </form>
+
+            <form id="votar-vote-form" class="space-y-4 hidden">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Escolha sua Chapa</h3>
+                
+                <div id="votar-chapas-list" class="space-y-2">
+                    </div>
+
+                <div id="votar-vote-status" class="text-sm text-center font-medium"></div>
+
+                <div>
+                    <button type="submit" id="btn-submit-voto"
+                            class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        Enviar Voto (Grátis)
+                    </button>
+                </div>
+            </form>
+
+            <button type="button" id="btn-back-to-list-2" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar para a Lista
+            </button>
         </div>
 
     </main>

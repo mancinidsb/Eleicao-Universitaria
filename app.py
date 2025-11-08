@@ -2,23 +2,47 @@ from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
 import json
 import os
-import hashlib
+import hashlib # Ainda necessário para o _hash_pair
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
+from typing import Tuple, List, Dict
+
+# Importa a biblioteca Web3
+from web3 import Web3
 
 app = Flask(__name__)
 CORS(app)
 
+# --- CONFIGURAÇÃO WEB3 E DO RELAYER ---
+RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/8FaeERMnNWGASM_ePLx7I"
+_RELAYER_ADDRESS_RAW = "0x21dcfc33545acecf7bffa27b33261deeb6667622" 
+RELAYER_PRIVATE_KEY = "4910711ef868cdbeee8ff20ef7787b4402f609ba1c03f9b05db4c97cb396b53d"
+
 CONTRACT_JSON_PATH = 'contract.json'
-RELAYER_ADDRESS = "0x21dcfc33545acecf7bffa27b33261deeb6667622" 
+if not os.path.exists(CONTRACT_JSON_PATH):
+    print("ERRO: contract.json não encontrado.")
+    exit()
+with open(CONTRACT_JSON_PATH, 'r') as f:
+    CONTRACT_ABI = json.load(f).get('abi')
+    if not CONTRACT_ABI:
+        print("ERRO: ABI não encontrado em contract.json")
+        exit()
+
+# Conecta ao nó Ethereum
+web3 = Web3(Web3.HTTPProvider(RPC_URL))
+RELAYER_ADDRESS = web3.to_checksum_address(_RELAYER_ADDRESS_RAW) # Correção de Checksum
+if not web3.is_connected():
+    print(f"ERRO: Falha ao conectar ao nó Ethereum em {RPC_URL}")
+    exit()
+else:
+    print(f"Conectado ao nó Ethereum (Chain ID: {web3.eth.chain_id})")
 
 # --- Configuração do Banco de Dados SQLite ---
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.root_path, 'votacoes.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# --- Modelos do Banco de Dados ---
-
+# --- Modelos do Banco de Dados (sem mudanças) ---
 class Votacao(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     campus = db.Column(db.String(100), nullable=False)
@@ -26,205 +50,312 @@ class Votacao(db.Model):
     sigaa_link = db.Column(db.String(255), nullable=False)
     admin_wallet = db.Column(db.String(42), nullable=False) 
     contract_address = db.Column(db.String(42), nullable=False, unique=True)
-    
-    # NOVO: Relacionamento para que Votacao.chapas funcione
-    chapas = db.relationship('Chapa', backref='votacao', lazy=True)
+    chapas = db.relationship('Chapa', backref='votacao', lazy=True, cascade="all, delete-orphan")
 
-# NOVO: Tabela para armazenar as chapas inscritas
 class Chapa(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome_chapa = db.Column(db.String(100), nullable=False)
     proposta = db.Column(db.Text, nullable=False)
-    numero_chapa = db.Column(db.Integer, nullable=False) # Gerado pelo sistema
-    
-    # Chave estrangeira para linkar a chapa à sua votação
+    numero_chapa = db.Column(db.Integer, nullable=False) 
     votacao_id = db.Column(db.Integer, db.ForeignKey('votacao.id'), nullable=False)
 
+# --- Constante de Segredo ---
+SEGREDO_ELEICAO = "ufpi-eleicao-2025.2"
 
-# --- Lógica da Merkle Tree (Sem mudanças) ---
-def _hash_pair(left: str, right: str) -> str:
-    return hashlib.sha256((left + right).encode('utf-8')).hexdigest()
+# --- LÓGICA DA MERKLE TREE (CORRIGIDA COM WEB3.PY) ---
 
-def _build_tree_recursive(leaves: list[str]) -> str:
-    if not leaves: return hashlib.sha256(b"").hexdigest()
-    if len(leaves) == 1: return leaves[0]
-    new_level = []
-    for i in range(0, len(leaves), 2):
-        left = leaves[i]
-        right = leaves[i+1] if (i+1) < len(leaves) else left
-        if left > right: left, right = right, left
-        new_level.append(_hash_pair(left, right))
-    return _build_tree_recursive(new_level)
+def _get_nullifier(matricula: str) -> str:
+    """Gera o hash nullifier para uma matrícula."""
+    # CORRIGIDO: Usa web3.keccak
+    return web3.keccak(text=f"{matricula}-{SEGREDO_ELEICAO}").hex()
 
-def _gerar_merkle_root(lista_de_matriculas: list[str]) -> str:
-    print("Gerando Merkle Tree (com hashlib manual)...")
-    segredo_eleicao = "ufpi-eleicao-2025.2" 
-    leaves = [hashlib.sha256(f"{m}-{segredo_eleicao}".encode()).hexdigest() for m in lista_de_matriculas]
+def _get_all_leaves(lista_de_matriculas: List[str]) -> List[str]:
+    """Gera e ordena todas as folhas (nullifiers)."""
+    leaves = [_get_nullifier(m) for m in lista_de_matriculas]
     leaves.sort()
-    merkle_root = _build_tree_recursive(leaves)
-    merkle_root_hex = f"0x{merkle_root}"
-    print(f"Merkle Root gerada: {merkle_root_hex}")
-    return merkle_root_hex
+    return leaves
 
-def _simular_scraping_sigaa(sigaa_link: str) -> list[str]:
+def _hash_pair(left: str, right: str) -> str:
+    """Combina e hasheia um par de hashes (strings hex)."""
+    if left > right: left, right = right, left
+    # CORRIGIDO: Usa web3.keccak e concatena bytes
+    left_bytes = bytes.fromhex(left.replace("0x", ""))
+    right_bytes = bytes.fromhex(right.replace("0x", ""))
+    return web3.keccak(left_bytes + right_bytes).hex()
+
+def _build_tree_levels(leaves: List[str]) -> List[List[str]]:
+    """Constrói a árvore e retorna todos os níveis, de baixo para cima."""
+    if not leaves: 
+        # CORRIGIDO: Usa web3.keccak
+        return [[ web3.keccak(b"").hex() ]] if not leaves else [[]]
+        
+    levels = [leaves]
+    current_level = leaves
+    
+    while len(current_level) > 1:
+        new_level = []
+        for i in range(0, len(current_level), 2):
+            left = current_level[i]
+            right = current_level[i+1] if (i+1) < len(current_level) else left
+            parent_hash = _hash_pair(left, right)
+            new_level.append(parent_hash)
+        
+        levels.append(new_level)
+        current_level = new_level
+    
+    return levels # Retorna [folhas, nivel1, nivel2, ..., raiz]
+
+def _get_merkle_proof(leaf_hash: str, levels: List[List[str]]) -> List[str]:
+    """Obtém a prova Merkle para uma folha específica."""
+    proof = []
+    current_hash = leaf_hash
+    
+    for i in range(len(levels) - 1):
+        current_level = levels[i]
+        try:
+            idx = current_level.index(current_hash)
+        except ValueError:
+            raise Exception("Erro de lógica: Folha não encontrada na árvore.")
+        if idx % 2 == 0:
+            sibling_idx = idx + 1
+            sibling = current_level[sibling_idx] if sibling_idx < len(current_level) else current_hash
+        else:
+            sibling_idx = idx - 1
+            sibling = current_level[sibling_idx]
+        
+        proof.append(f"0x{sibling.replace('0x','')}") # Adiciona o irmão à prova
+        
+        left, right = (current_hash, sibling) if idx % 2 == 0 else (sibling, current_hash)
+        current_hash = _hash_pair(left, right)
+
+    root = levels[-1][0] if levels[-1] else web3.keccak(b"").hex()
+    if current_hash != root:
+        raise Exception("Falha ao construir a prova, a raiz não bate.")
+
+    return proof
+
+# --- Função de Simulação de Scraping ---
+def _simular_scraping_sigaa(sigaa_link: str) -> List[str]:
     print(f"Simulando scraping do link: {sigaa_link}")
     return [
-        "20169004867", "20229038498", "20189016391", "20199011094", 
+        "20169004867", "20229038498", "20189016391", "2019011094", 
         "20239005810", "20179128705", "20259019706", "20229047951"
     ]
 
-# --- Rota 1 (Prepare Deploy) (Sem mudanças) ---
+# --- Função Auxiliar Web3 (sem mudanças) ---
+def get_contract_instance(contract_address: str):
+    """Pega uma instância do contrato web3 para interagir."""
+    try:
+        address = web3.to_checksum_address(contract_address)
+        return web3.eth.contract(address=address, abi=CONTRACT_ABI)
+    except Exception as e:
+        print(f"Erro ao carregar contrato {contract_address}: {e}")
+        return None
+
+# --- Rota 1 (Prepare Deploy) ---
 @app.route('/api/prepare-deploy', methods=['POST'])
 def prepare_deploy_info():
     data = request.json
     sigaa_link = data.get('sigaa_link')
     if not sigaa_link: abort(400, description="Link do SIGAA é obrigatório.")
-    
     try:
         lista_alunos = _simular_scraping_sigaa(sigaa_link)
-        merkle_root = _gerar_merkle_root(lista_alunos)
-    except Exception as e: abort(500, description=f"Erro ao gerar Merkle Root: {e}")
-    
-    if not os.path.exists(CONTRACT_JSON_PATH):
-        abort(500, description="Arquivo de contrato não encontrado.")
-    
-    try:
-        with open(CONTRACT_JSON_PATH, 'r') as f: contract_data = json.load(f)
-        abi = contract_data.get('abi')
-        bytecode = contract_data.get('bytecode')
-        if not abi or not bytecode: abort(500, description="ABI ou Bytecode inválido.")
-            
+        leaves = _get_all_leaves(lista_alunos)
+        levels = _build_tree_levels(leaves)
+        merkle_root = levels[-1][0] if levels[-1] else web3.keccak(b"").hex()
+        merkle_root_hex = f"0x{merkle_root.replace('0x','')}"
+        print(f"Merkle Root (Keccak256/Web3) gerada: {merkle_root_hex}")
+        
         return jsonify(
-            abi=abi, 
-            bytecode=bytecode,
-            merkleRoot=merkle_root,
+            abi=CONTRACT_ABI, 
+            bytecode=json.load(open(CONTRACT_JSON_PATH))['bytecode'],
+            merkleRoot=merkle_root_hex,
             relayerAddress=RELAYER_ADDRESS
         )
-    except Exception as e: abort(500, description=f"Erro ao ler o arquivo: {e}")
+    except Exception as e: 
+        print(f"Erro ao preparar deploy: {e}")
+        abort(500, description=f"Erro ao gerar Merkle Root: {e}")
 
-# --- Rota 2 (Criar Votação) (Sem mudanças) ---
+# --- Rota 2 (Criar Votação) ---
 @app.route('/api/criar-votacao', methods=['POST'])
 def criar_votacao():
     data = request.json
-    sigaa_link = data.get('sigaa_link')
-    admin_wallet = data.get('admin_wallet')
-    contract_address = data.get('contract_address')
-    campus = data.get('campus')
-    curso = data.get('curso')
-
-    if not all([sigaa_link, admin_wallet, contract_address, campus, curso]):
+    if not all(k in data for k in ['sigaa_link', 'admin_wallet', 'contract_address', 'campus', 'curso']):
         abort(400, description="Dados incompletos recebidos.")
-
     try:
         nova_votacao = Votacao(
-            campus=campus,
-            curso=curso,
-            sigaa_link=sigaa_link,
-            admin_wallet=admin_wallet,
-            contract_address=contract_address
+            campus=data['campus'], curso=data['curso'], sigaa_link=data['sigaa_link'],
+            admin_wallet=data['admin_wallet'], contract_address=data['contract_address']
         )
         db.session.add(nova_votacao)
         db.session.commit()
     except Exception as e:
         db.session.rollback()
-        print(f"Erro ao salvar no DB: {e}")
-        abort(500, description="Erro ao salvar dados no banco.")
-
-    print("\n[SALVO NO DB]:", data)
+        abort(500, description=f"Erro ao salvar dados no banco: {e}")
     return jsonify(message="Votação salva com sucesso no banco de dados!"), 201
 
-# --- Rota 3 (Listar Votações) (Sem mudanças) ---
+# --- Rota 3 (Listar Votações) ---
 @app.route('/api/votacoes', methods=['GET'])
 def get_votacoes():
     try:
         search_term = request.args.get('search', '') 
         query = Votacao.query
-        
         if search_term:
             search_filter = f"%{search_term}%"
-            query = query.filter(
-                or_(
-                    Votacao.campus.ilike(search_filter),
-                    Votacao.curso.ilike(search_filter),
-                    Votacao.admin_wallet.ilike(search_filter)
-                )
-            )
-            
+            query = query.filter(or_(Votacao.campus.ilike(search_filter), Votacao.curso.ilike(search_filter), Votacao.admin_wallet.ilike(search_filter)))
         votacoes = query.order_by(Votacao.id.desc()).all()
-        
-        resultado = []
-        for votacao in votacoes:
-            resultado.append({
-                "id": votacao.id,
-                "campus": votacao.campus,
-                "curso": votacao.curso,
-                "admin_wallet": votacao.admin_wallet,
-                "contract_address": votacao.contract_address
-            })
-            
+        resultado = [{"id": v.id, "campus": v.campus, "curso": v.curso, "admin_wallet": v.admin_wallet, "contract_address": v.contract_address} for v in votacoes]
         return jsonify(resultado), 200
-        
-    except Exception as e:
-        print(f"Erro ao buscar votações: {e}")
-        abort(500, description="Erro ao buscar dados no servidor.")
+    except Exception as e: abort(500, description=f"Erro ao buscar dados no servidor: {e}")
 
-
-# --- NOVO: ROTA 4 - Inscrever Chapa ---
+# --- Rota 4 (Inscrever Chapa) ---
 @app.route('/api/inscrever-chapa', methods=['POST'])
 def inscrever_chapa():
     data = request.json
-    contract_address = data.get('contract_address')
-    chapa_name = data.get('chapa_name')
-    chapa_proposal = data.get('chapa_proposal')
-
-    if not all([contract_address, chapa_name, chapa_proposal]):
+    if not all(k in data for k in ['contract_address', 'chapa_name', 'chapa_proposal']):
         abort(400, description="Dados incompletos para inscrever chapa.")
-
     try:
-        # 1. Encontra a votação pai no banco de dados
-        votacao = Votacao.query.filter_by(contract_address=contract_address).first()
-        if not votacao:
-            abort(404, description="Votação não encontrada.")
-            
-        # 2. LÓGICA DE NEGÓCIO: Calcula o número da chapa
-        # Conta quantas chapas *já existem* para esta votação
+        votacao = Votacao.query.filter_by(contract_address=data['contract_address']).first()
+        if not votacao: abort(404, description="Votação não encontrada.")
+        
         numero_atual = Chapa.query.filter_by(votacao_id=votacao.id).count()
         novo_numero_chapa = numero_atual + 1
 
-        # 3. Cria o novo objeto Chapa
         nova_chapa = Chapa(
-            nome_chapa=chapa_name,
-            proposta=chapa_proposal,
-            numero_chapa=novo_numero_chapa,
-            votacao_id=votacao.id # Linka com a Votacao
+            nome_chapa=data['chapa_name'], proposta=data['chapa_proposal'],
+            numero_chapa=novo_numero_chapa, votacao_id=votacao.id
         )
-        
-        # 4. Salva no banco de dados
         db.session.add(nova_chapa)
         db.session.commit()
-
-        print("\n===================================")
-        print("NOVA CHAPA INSCRITA NO BANCO:")
-        print(f"  Votação ID: {votacao.id} ({votacao.campus})")
-        print(f"  Nome Chapa: {chapa_name}")
-        print(f"  Número Gerado: {novo_numero_chapa}")
-        print("===================================\n")
-
-        # 5. Retorna sucesso com o número gerado
-        return jsonify(
-            message="Chapa inscrita com sucesso!",
-            numero_chapa=novo_numero_chapa
-        ), 201
-
+        return jsonify(message="Chapa inscrita com sucesso!", numero_chapa=novo_numero_chapa), 201
     except Exception as e:
         db.session.rollback()
-        print(f"Erro ao inscrever chapa: {e}")
-        abort(500, description="Erro interno ao salvar a chapa.")
+        abort(500, description=f"Erro interno ao salvar a chapa: {e}")
+
+# --- ROTA 5 (AUTENTICAR) ---
+@app.route('/api/autenticar', methods=['POST'])
+def autenticar_aluno():
+    data = request.json
+    contract_address = data.get('contract_address')
+    matricula_aluno = data.get('matricula')
+    
+    if not contract_address or not matricula_aluno:
+        abort(400, description="Endereço do contrato e matrícula são obrigatórios.")
+
+    try:
+        votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+        if not votacao:
+            abort(404, description="Votação não encontrada.")
+
+        lista_completa_matriculas = _simular_scraping_sigaa(votacao.sigaa_link)
+        
+        if matricula_aluno not in lista_completa_matriculas:
+            return jsonify({"autenticado": False, "mensagem": "Matrícula não encontrada nesta votação."}), 403
+            
+        nullifier_hash = _get_nullifier(matricula_aluno)
+        nullifier_hash_bytes = bytes.fromhex(nullifier_hash.replace("0x", ""))
+        
+        contrato = get_contract_instance(votacao.contract_address)
+        if not contrato:
+            abort(500, description="Falha ao carregar o contrato na rede.")
+        
+        print(f"Checando nullifier: 0x{nullifier_hash}")
+        ja_votou = contrato.functions.nullifiersUsados(nullifier_hash_bytes).call()
+        
+        if ja_votou:
+            print("VOTO DUPLO DETECTADO!")
+            return jsonify({"autenticado": False, "mensagem": "Esta matrícula já foi usada para votar."}), 403
+
+        all_leaves = _get_all_leaves(lista_completa_matriculas)
+        tree_levels = _build_tree_levels(all_leaves)
+        merkle_proof = _get_merkle_proof(nullifier_hash, tree_levels)
+        
+        chapas_db = Chapa.query.filter_by(votacao_id=votacao.id).order_by(Chapa.numero_chapa.asc()).all()
+        chapas_json = [{"numero": c.numero_chapa, "nome": c.nome_chapa, "proposta": c.proposta} for c in chapas_db]
+
+        print(f"\n[AUTENTICAÇÃO BEM-SUCEDIDA] Matrícula: {matricula_aluno}")
+        
+        return jsonify({
+            "autenticado": True,
+            "merkleProof": merkle_proof,
+            "nullifierHash": f"0x{nullifier_hash}",
+            "chapas": chapas_json
+        }), 200
+
+    except Exception as e:
+        print(f"Erro na autenticação: {e}")
+        abort(500, description=f"Erro interno no servidor: {e}")
+
+
+# --- ROTA 6 - Enviar Voto ---
+@app.route('/api/votar', methods=['POST'])
+def relayer_votar():
+    data = request.json
+    
+    contract_address = data.get('contract_address')
+    voto_criptografado = data.get('votoCriptografado') 
+    recibo_do_aluno = data.get('reciboDoAluno')     
+    nullifier_hash = data.get('nullifierHash')       
+    merkle_proof = data.get('merkleProof')         
+
+    if not all([contract_address, voto_criptografado, recibo_do_aluno, nullifier_hash, merkle_proof]):
+        abort(400, description="Dados da transação de voto incompletos.")
+        
+    try:
+        print(f"\n[RELAYER]: Recebido pedido de voto para o contrato {contract_address}")
+        
+        contrato = get_contract_instance(contract_address)
+        if not contrato:
+            abort(500, description="Falha ao carregar o contrato na rede.")
+            
+        voto_bytes = voto_criptografado.encode('utf-8')
+        recibo_bytes = bytes.fromhex(recibo_do_aluno.replace('0x', ''))
+        nullifier_bytes = bytes.fromhex(nullifier_hash.replace('0x', ''))
+        proof_bytes_list = [bytes.fromhex(p.replace('0x', '')) for p in merkle_proof]
+
+        print(f"[RELAYER]: Construindo transação para {RELAYER_ADDRESS}...")
+        
+        nonce = web3.eth.get_transaction_count(RELAYER_ADDRESS)
+        
+        tx = contrato.functions.votar(
+            voto_bytes,
+            recibo_bytes,
+            nullifier_bytes,
+            proof_bytes_list
+        ).build_transaction({
+            'from': RELAYER_ADDRESS,
+            'nonce': nonce,
+            'gas': 300000 # Aumenta o limite de gás para a verificação da prova
+        })
+        
+        print("[RELAYER]: Assinando transação...")
+        signed_tx = web3.eth.account.sign_transaction(tx, private_key=RELAYER_PRIVATE_KEY)
+        
+        print("[RELAYER]: Enviando transação para a rede...")
+        tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+        
+        print(f"[RELAYER]: Transação enviada! Hash: {tx_hash.hex()}. Aguardando recibo...")
+        tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+        
+        if tx_receipt.status == 0:
+            raise Exception("A transação foi revertida pelo contrato. (Provavelmente voto duplo ou prova inválida)")
+
+        print(f"[RELAYER]: Voto computado com sucesso! Bloco: {tx_receipt.blockNumber}")
+        
+        return jsonify({
+            "sucesso": True,
+            "mensagem": "Voto computado com sucesso!",
+            "tx_hash": tx_hash.hex(),
+            "blockNumber": tx_receipt.blockNumber
+        }), 200
+
+    except Exception as e:
+        print(f"ERRO NO RELAYER: {e}")
+        return jsonify({"sucesso": False, "mensagem": f"Erro do Relayer: {e}"}), 500
 
 
 if __name__ == '__main__':
     with app.app_context():
-        # Isso irá criar as tabelas 'votacao' E 'chapa' se não existirem
         db.create_all()
     
     app.run(debug=True, port=5000)
