@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!-- <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -114,4 +114,194 @@
     <script src="script.js" defer></script>
 
 </body>
-</html>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Votação</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Biblioteca Ethers.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.1/ethers.umd.min.js" xintegrity="sha512-4sQxQGfEEjM2CZ1aX9G3IbYmF/KsTQGglfobc/2iI/0RJEl57dSH/xL3N05e7t1D/94PzO/x/3cK/lG/2/7Jg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <main class="min-h-screen flex flex-col justify-center items-center p-4 sm:p-8">
+        
+        <!-- ============================ -->
+        <!-- TELA 1: HOME (Início)        -->
+        <!-- ============================ -->
+        <div id="home-screen" class="w-full max-w-lg text-center">
+            <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">
+                Bem-vindo ao Sistema de Votação
+            </h1>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <a href="#" id="btn-show-create" class="w-full sm:w-auto flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 text-center">
+                    Criar Votação
+                </a>
+                <a href="#" id="btn-show-vote" class="w-full sm:w-auto flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 text-center">
+                    Participar de Votação
+                </a>
+            </div>
+        </div>
+
+        <!-- ============================ -->
+        <!-- TELA 2: CRIAR VOTAÇÃO (ATUALIZADA) -->
+        <!-- ============================ -->
+        <div id="create-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Criar Nova Votação
+            </h2>
+
+            <form id="create-poll-form" class="space-y-4">
+                
+                <!-- 1. Identificação -->
+                <div class="border-b pb-4 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">1. Identificação</h3>
+                    <div>
+                        <label for="campus-name" class="block text-sm font-medium text-gray-700 mb-2">Campus</label>
+                        <input type="text" id="campus-name" name="campus-name" placeholder="Ministro Petrônio Portela" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="mt-4">
+                        <label for="curso-name" class="block text-sm font-medium text-gray-700 mb-2">Centro / Curso</label>
+                        <input type="text" id="curso-name" name="curso-name" placeholder="CCN/Odontologia" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                </div>
+                
+                <!-- 2. Períodos (Datas) -->
+                <div class="border-b pb-4 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Períodos</h3>
+                    <div class="space-y-4">
+                        <!-- NOVO: Adicionado data de INICIO da chapa -->
+                        <div>
+                            <label for="data-inicio-chapa" class="block text-sm font-medium text-gray-700">Início da Inscrição de Chapas:</label>
+                            <input type="datetime-local" id="data-inicio-chapa" name="data-inicio-chapa" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="data-fim-chapa" class="block text-sm font-medium text-gray-700">Fim da Inscrição de Chapas:</label>
+                            <input type="datetime-local" id="data-fim-chapa" name="data-fim-chapa" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="data-inicio-votacao" class="block text-sm font-medium text-gray-700">Início da Votação:</label>
+                            <input type="datetime-local" id="data-inicio-votacao" name="data-inicio-votacao" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="data-fim-votacao" class="block text-sm font-medium text-gray-700">Fim da Votação:</label>
+                            <input type="datetime-local" id="data-fim-votacao" name="data-fim-votacao" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Configuração (Blockchain) -->
+                <div class="border-b pb-4 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">3. Configuração (Blockchain)</h3>
+                    <div>
+                        <label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">Link/Arquivo de Alunos (SIGAA):</label>
+                        <input type="text" id="sigaa-link" name="sigaa-link" placeholder="Caminho para o CSV ou Link" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    
+                    <!-- O Proponente DEVE conectar a carteira para pagar o gás -->
+                    <input type="hidden" id="wallet-address" name="wallet-address">
+                    <div class="mt-4">
+                        <button type="button" id="btn-connect-metamask"
+                                class="w-full flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                            <img src="https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg" alt="Logo MetaMask" class="w-6 h-6 mr-3">
+                            <span>Conectar Conta (Proponente)</span>
+                        </button>
+                    </div>
+                    
+                    <div id="metamask-status" class="text-sm text-center font-medium mt-2"></div>
+                </div>
+
+                <!-- Botões -->
+                <div>
+                    <!-- O botão de submit começa desabilitado -->
+                    <button type="submit" id="btn-submit-poll" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Fazer Deploy (Pagar Gás)
+                    </button>
+                </div>
+                <button type="button" id="btn-back-home" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                    &larr; Voltar para o Início
+                </button>
+            </form>
+        </div>
+        
+        <!-- TELA 3: PARTICIPAR (Lista/Busca) -->
+        <div id="vote-screen" class="w-full max-w-2xl p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            <!-- (Sem mudanças) -->
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Votações Ativas</h2>
+            <form id="search-form" class="flex items-center gap-2 mb-6"><input type="search" id="search-input" placeholder="Buscar por campus, curso ou carteira..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">Buscar</button></form>
+            <div id="votacoes-list" class="space-y-4"></div>
+            <div id="votacoes-status" class="text-center text-gray-500 mt-4"></div>
+            <button type="button" id="btn-back-home-2" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para o Início</button>
+        </div>
+
+        <!-- TELA 4: INSCREVER CHAPA (Oculta) -->
+        <div id="chapa-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            <!-- (Sem mudanças) -->
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Inscrever Chapa</h2>
+            <form id="chapa-form" class="space-y-4"><input type="hidden" id="chapa-contract-address"><div><label for="chapa-name" class="block text-sm font-medium text-gray-700 mb-2">Nome da Chapa</label><input type="text" id="chapa-name" name="chapa-name" placeholder="Chapa 1 - Renovação Total" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></div><div><label for="chapa-proposal" class="block text-sm font-medium text-gray-700 mb-2">Proposta da Chapa</label><textarea id="chapa-proposal" name="chapa-proposal" rows="5" placeholder="Nossa proposta foca em..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></textarea></div><div id="chapa-status" class="text-sm text-center font-medium"></div><div><button type="submit" id="btn-submit-chapa" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">Enviar Inscrição</button></div>
+            <button type="button" id="btn-back-to-list" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para a Lista</button>
+            </form>
+        </div>
+
+        <!-- TELA 5: VOTAR (Oculta) -->
+        <div id="votar-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            <!-- (Sem mudanças) -->
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center" id="votar-titulo">Votar em [Nome da Votação]</h2>
+            <div id="votar-auth-step">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">1. Autenticação</h3>
+                <p class="text-sm text-gray-600 mb-2">Para votar, precisamos confirmar que você é um aluno ativo. Por favor, insira sua matrícula.</p>
+                <input type="hidden" id="votar-contract-address">
+                <div>
+                    <label for="votar-matricula" class="block text-sm font-medium text-gray-700 mb-2">Sua Matrícula</label>
+                    <input type="text" id="votar-matricula" name="votar-matricula" placeholder="Ex: 20209001234" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div class="mt-4">
+                    <button type="button" id="btn-google-login" class="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        <svg class="w-5 h-5 mr-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C39.712,35.619,44,29.57,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                        Autenticar Matrícula com Google
+                    </button>
+                </div>
+                <div id="votar-auth-status" class="text-sm text-center font-medium"></div>
+            </div>
+            <form id="votar-vote-form" class="space-y-4 hidden">
+                <div class="border-b pb-2">
+                    <h3 class="text-lg font-semibold text-gray-700" id="votar-user-info-titulo">2. Escolha sua Chapa</h3>
+                </div>
+                <div id="votar-chapas-list" class="space-y-2 max-h-60 overflow-y-auto p-1"></div>
+                <div id="votar-vote-status" class="text-sm text-center font-medium"></div>
+                <div>
+                    <button type="submit" id="btn-submit-voto" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        Enviar Voto (Grátis)
+                    </button>
+                </div>
+            </form>
+            <button type="button" id="btn-back-to-list-2" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar para a Lista
+            </button>
+        </div>
+
+    </main>
+
+    <!-- Carrega o arquivo JavaScript externo -->
+    <script src="script.js" defer></script>
+
+</body>
+</html>  -->
+
+
