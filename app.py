@@ -172,6 +172,8 @@ def _simular_scraping_sigaa(sigaa_link: str) -> Dict[str, str]:
         "20189016391": "ALAN VITOR BRITO AMORIM",
         "2019011094": "ALEXANDRE JOSE CANTUARIA MONTEIRO ROSA FILHO",
         "20229020690": "GUILHERME MANCINI DE SOUSA BARROSO",
+        "20229004767": "THALYSSON ARAUJO MELO",
+        "20229004515": "IURY FRANCISCO DE MENEZES MANICOBA FILHO"
     }
 def normalize_name(name: str) -> str:
     if not name: return ""
@@ -362,6 +364,10 @@ def get_votacoes():
                 "contract_address": votacao.contract_address,
                 "estado_contrato_int": estado_contrato_int, # (0, 1, 2)
                 "estado_contrato_str": estado_contrato_str, # O texto descritivo
+                "data_inicio_chapa": votacao.data_inicio_chapa,
+                "data_fim_chapa": votacao.data_fim_chapa,
+                "data_inicio_votacao": votacao.data_inicio_votacao,
+                "data_fim_votacao": votacao.data_fim_votacao
             })
             
         return jsonify(resultado_final), 200
@@ -538,10 +544,10 @@ def relayer_votar():
         return jsonify(sucesso=False, mensagem=f"Erro do Relayer: {e}"), 500
 
 if __name__ == '__main__':
-    # with app.app_context():
+    with app.app_context():
         # ATENÇÃO: Isso cria as novas colunas. Delete seu 'votacoes.db'
         # uma última vez para que isso funcione.
         # db.drop_all()
-        # db.create_all()
+        db.create_all()
     
     app.run(debug=True, port=5000)

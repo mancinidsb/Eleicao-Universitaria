@@ -1,3 +1,13 @@
+function formatarDataParaInput(data) {
+  const ano = data.getFullYear();
+  const mes = String(data.getMonth() + 1).padStart(2, '0');
+  const dia = String(data.getDate()).padStart(2, '0');
+  const hora = String(data.getHours()).padStart(2, '0');
+  const minuto = String(data.getMinutes()).padStart(2, '0');
+
+  return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
             
     // --- Seletores das Telas ---
@@ -18,6 +28,40 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPollForm = document.getElementById('create-poll-form');
     const walletAddressInput = document.getElementById('wallet-address');
     const btnSubmitPoll = document.getElementById('btn-submit-poll');
+
+    const data_inicio_chapa = document.getElementById('data-inicio-chapa');
+    const data_fim_chapa = document.getElementById('data-fim-chapa');
+
+    const data_inicio_votacao = document.getElementById('data-inicio-votacao');
+    const data_fim_votacao = document.getElementById('data-fim-votacao');
+
+    const agora = new Date();
+
+    // agora.setMinutes(agora.getMinutes() +1);
+    // const agora_30 = new Date();
+    data_inicio_chapa.value = formatarDataParaInput(agora);
+    
+    agora.setMinutes(agora.getMinutes() +5);
+    
+    data_fim_chapa.value = formatarDataParaInput(agora); 
+
+
+    agora.setMinutes(agora.getMinutes() + 5);
+
+    data_inicio_votacao.value = formatarDataParaInput(agora);
+
+    agora.setMinutes(agora.getMinutes() + 10);
+
+    data_fim_votacao.value = formatarDataParaInput(agora);
+
+    // agora.setMinutes(agora.getMinutes() + 30);
+
+    // data_inicio_votacao.value = formatarDataParaInput(agora.getMinutes()+5);
+
+
+    
+
+    
 
     // --- Seletores Tela 3 (Votar/Lista) ---
     const btnBackHome2 = document.getElementById('btn-back-home-2'); 
@@ -116,6 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const campusName = document.getElementById('campus-name').value;
         const cursoName = document.getElementById('curso-name').value;
         const dataInicioChapa = document.getElementById('data-inicio-chapa').value;
+        // dataInicioChapa.textContent = "2";
         const dataFimChapa = document.getElementById('data-fim-chapa').value;
         const dataInicioVotacao = document.getElementById('data-inicio-votacao').value;
         const dataFimVotacao = document.getElementById('data-fim-votacao').value;
@@ -181,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (!responseSave.ok) throw new Error('Falha ao salvar dados no backend.');
             
-            metamaskStatus.textContent = `Votação criada! Contrato: ${contractAddress.substring(0, 6)}...`;
+            metamaskStatus.textContent = `Votação criada! Contrato: ${contractAddress}`;
             metamaskStatus.classList.add('text-green-600');
             btnSubmitPoll.textContent = 'Votação Criada!';
             createPollForm.reset();
@@ -241,6 +286,27 @@ document.addEventListener('DOMContentLoaded', () => {
             if (estadoTexto.includes('Aguardando')) estadoCor = 'text-blue-600';
             
             let botoesHTML = '';
+
+            let data_fim_chapa = new Date(votacao.data_fim_chapa);
+            let data_inicio_votacao = new Date(votacao.data_inicio_votacao);
+            let data_fim_votacao = new Date(votacao.data_fim_votacao);
+
+            const options = {
+                year: '2-digit',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,   // Garante o formato 24h
+                timeZone: 'UTC'  // ESSENCIAL: Usa o horário UTC (GMT) original
+            };
+
+            data_fim_chapa = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_chapa);
+            data_inicio_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_inicio_votacao);
+            data_fim_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_votacao);
+
+            let data_final = '';
+
             
             // (0=Pendente, 1=Inscricao, 2=Votacao, 3=Encerrada)
             switch(votacao.estado_contrato_int) {
@@ -249,20 +315,25 @@ document.addEventListener('DOMContentLoaded', () => {
                         botoesHTML = `<span class="text-sm text-gray-500">Aguardando início das inscrições.</span>`;
                     } else { // 'Inscrição Aberta' (baseado na data do app)
                         botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-inscrever-chapa w-full flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Inscrever Chapa</button>`;
+                        data_final = `${data_fim_chapa.replace(',', '')}`;
                     }
                     break;
                 case 1: // Inscricao
                     if (estadoTexto.includes('Encerrada')) { // Data do app já passou
                         botoesHTML = `<span class="text-sm text-gray-500">Inscrição encerrada. Aguardando votação.</span>`;
+                        data_final = `${data_inicio_votacao}`;
                     } else {
                         botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-inscrever-chapa w-full flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Inscrever Chapa</button>`;
+                        data_final = `${data_fim_chapa.replace(',', '')}`;
                     } 
                     break;
                 case 2: // Votacao
                     if (estadoTexto.includes('Encerrada')) { // Data do app já passou
                         botoesHTML = `<span class="text-sm text-gray-500">Votação encerrada. Aguardando apuração.</span>`;
+                        data_final = `${data_fim_votacao.replace(',', '')}`;
                     } else {
                         botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-votar-agora w-full flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Votar Agora</button>`;
+                        data_final = `${data_fim_votacao.replace(',', '')}`;
                     }
                     break;
                 case 3: // Encerrada
@@ -272,10 +343,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     botoesHTML = `<span class="text-sm text-red-500">Erro de estado no contrato.</span>`;
             }
 
+
+
             card.innerHTML = `
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="font-semibold text-lg text-blue-700">${votacao.campus}</h3>
                     <span class="font-medium ${estadoCor}">${estadoTexto}</span>
+                    <span class="font-medium text-yellow-700">${data_final}</span>
                 </div>
                 <p class="text-gray-700">${votacao.curso}</p>
                 <div class="mt-3 border-t pt-2">
@@ -380,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     btnGoogleLogin.addEventListener('click', (e) => {
         const btn = e.target;
-        btn.disabled = true;
+        btn.disabled = false;
         votarAuthStatus.textContent = 'Aguardando Google...';
         votarAuthStatus.classList.remove('text-red-500', 'text-green-600');
         votarAuthStatus.classList.add('text-blue-600');
@@ -496,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error(data.mensagem || 'Falha ao enviar o voto.');
             }
 
-            votarVoteStatus.textContent = `Voto enviado com sucesso! (Hash: ${data.tx_hash.substring(0, 10)}...)`;
+            votarVoteStatus.textContent = `Voto enviado com sucesso! (Hash: ${data.tx_hash})`;
             votarVoteStatus.classList.add('text-green-600');
 
             setTimeout(() => {
