@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             metamaskStatus.textContent = 'Servidor está gerando Merkle Root...';
             metamaskStatus.classList.add('text-blue-600');
 
-            const responseInfo = await fetch('http://127.0.0.1:5000/api/prepare-deploy', {
+            const responseInfo = await fetch('https://ballastic-latricia-delectably.ngrok-free.dev/api/prepare-deploy', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ sigaa_link: sigaaLink })
@@ -162,7 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // ETAPA 3: Salvar dados no Backend
             metamaskStatus.textContent = 'Salvando dados no servidor...';
             
-            const responseSave = await fetch('http://127.0.0.1:5000/api/criar-votacao', {
+            const responseSave = await fetch('https://ballastic-latricia-delectably.ngrok-free.dev/api/criar-votacao', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include', // Envia o cookie de sessão
@@ -207,7 +207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         votacoesStatus.textContent = 'Carregando votações...';
         // debugger;
         try {
-            let url = 'http://127.0.0.1:5000/api/votacoes';
+            let url = 'https://ballastic-latricia-delectably.ngrok-free.dev/api/votacoes';
             if (searchTerm) { url += `?search=${encodeURIComponent(searchTerm)}`; }
             
             // Inclui 'credentials' para que a sessão do Flask funcione
@@ -334,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const chapaProposal = document.getElementById('chapa-proposal').value;
             const contractAddress = chapaContractAddressInput.value;
             
-            const response = await fetch('http://127.0.0.1:5000/api/inscrever-chapa', {
+            const response = await fetch('https://ballastic-latricia-delectably.ngrok-free.dev/api/inscrever-chapa', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include', 
@@ -395,7 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
 
-        const authUrl = `http://127.0.0.1:5000/api/auth/google?contract_address=${contractAddress}&matricula=${matricula}`;
+        const authUrl = `https://ballastic-latricia-delectably.ngrok-free.dev/api/auth/google?contract_address=${contractAddress}&matricula=${matricula}`;
         window.open(authUrl, '_blank', 'width=500,height=600');
     });
 
@@ -405,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
             votarAuthStatus.textContent = 'Google OK. Verificando provas...';
             
             try {
-                const response = await fetch('http://127.0.0.1:5000/api/get-vote-data', {
+                const response = await fetch('https://ballastic-latricia-delectably.ngrok-free.dev/api/get-vote-data', {
                     method: 'GET',
                     credentials: 'include'
                 });
@@ -485,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 merkleProof: currentVoteState.merkleProof
             };
 
-            const response = await fetch('http://127.0.0.1:5000/api/votar', {
+            const response = await fetch('https://ballastic-latricia-delectably.ngrok-free.dev/api/votar', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include', 

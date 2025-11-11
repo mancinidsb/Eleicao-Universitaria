@@ -12,11 +12,34 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 from unidecode import unidecode
 from datetime import datetime
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 # Permite que o frontend (porta 8000 ou 5500) envie cookies
-CORS(app, supports_credentials=True, origins=["http://127.0.0.1:8000", "http://localhost:8000", "http://127.0.0.1:5500", "http://localhost:5500"])
+# CORS(app, supports_credentials=True, origins=["http://127.0.0.1:8000", "http://localhost:8000", "http://127.0.0.1:5500", "http://localhost:5500"])
+
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+CORS(app,
+    supports_credentials=True,
+    resources={r"/*": {"origins": [
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000"
+    ]}},
+    methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"]
+)
+
+
+
 app.secret_key = 'chave-secreta-muito-segura-trocar-depois' 
+
+app.config.update(
+    SESSION_COOKIE_SAMESITE='None',
+    SESSION_COOKIE_SECURE=True
+)
 
 # --- CONFIGURAÇÃO WEB3 E DO RELAYER (MESTRE) ---
 RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/8FaeERMnNWGASM_ePLx7I"
@@ -148,7 +171,7 @@ def _simular_scraping_sigaa(sigaa_link: str) -> Dict[str, str]:
         "20229038498": "ALAN NUNES VELOSO NOGUEIRA",
         "20189016391": "ALAN VITOR BRITO AMORIM",
         "2019011094": "ALEXANDRE JOSE CANTUARIA MONTEIRO ROSA FILHO",
-        "20229020690": "GUILHERME MANCINI DE SOUSA BARROSO"
+        "20229020690": "GUILHERME MANCINI DE SOUSA BARROSO",
     }
 def normalize_name(name: str) -> str:
     if not name: return ""
@@ -158,8 +181,9 @@ def normalize_name(name: str) -> str:
     return name
 
 # --- Rota 1 (Prepare Deploy) (Correta) ---
-@app.route('/api/prepare-deploy', methods=['POST'])
+@app.route('/api/prepare-deploy', methods=['POST', 'OPTIONS'])
 def prepare_deploy_info():
+    if request.method == "OPTIONS": return '', 200
     data = request.json
     sigaa_link = data.get('sigaa_link')
     if not sigaa_link: abort(400, description="Link do SIGAA é obrigatório.")
@@ -514,10 +538,10 @@ def relayer_votar():
         return jsonify(sucesso=False, mensagem=f"Erro do Relayer: {e}"), 500
 
 if __name__ == '__main__':
-    with app.app_context():
+    # with app.app_context():
         # ATENÇÃO: Isso cria as novas colunas. Delete seu 'votacoes.db'
         # uma última vez para que isso funcione.
-        db.drop_all()
-        db.create_all()
+        # db.drop_all()
+        # db.create_all()
     
     app.run(debug=True, port=5000)
