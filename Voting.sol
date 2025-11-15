@@ -18,6 +18,8 @@ contract Voting {
         Encerrada  // 3: Votação terminada
     }
 
+
+
     EstadoVotacao public estadoAtual;
 
     // --- DADOS DE CONFIGURAÇÃO (DEFINIDOS NO DEPLOY) ---
@@ -33,6 +35,18 @@ contract Voting {
     bytes32[] public quadroDeRecibos;
     mapping(bytes32 => bool) public nullifiersUsados;
 
+    address public immutable chapa_atual;
+
+    string public campus;
+    string public curso;
+    string public data_assembleia;
+
+    event ComissaoAdicionada(string nome);
+
+
+
+
+
 
     /**
      * @dev Construtor.
@@ -42,10 +56,19 @@ contract Voting {
      */
     constructor(
         bytes32 _merkleRoot,
-        address _relayerAddress
+        address _relayerAddress,
+        string memory _campus,
+        string memory _curso,
+        string memory _data_assembleia
     ) {
         merkleRoot = _merkleRoot;
         relayerAddress = _relayerAddress; // Define o mestre
+        chapa_atual = msg.sender;
+        campus=_campus;
+        curso=_curso;
+        data_assembleia=_data_assembleia;
+
+
         
         // O Proponente (msg.sender) paga o gás, mas não é salvo.
         
@@ -57,8 +80,19 @@ contract Voting {
 
     // Apenas o App Off-chain (Flask) pode chamar
     modifier apenasRelayer() {
-        require(msg.sender == relayerAddress, "DAO: Apenas o Relayer (App) pode fazer isso");
+        require(msg.sender == relayerAddress, "Apenas o Relayer (App) pode fazer isso");
         _;
+    }
+
+    modifier apenasChapa() {
+        require(msg.sender == chapa_atual, "Apenas a Chapa Atual (App) pode fazer isso");
+        _;
+    }
+
+    function cadastrarComissao(string[] calldata _comissao) public apenasChapa{
+        for (uint i = 0; i < _comissao.length; i++) {
+            emit ComissaoAdicionada(_comissao[i]);
+        }
     }
 
     // --- FUNÇÕES DE MUDANÇA DE ESTADO (Chamadas pelo Relayer) ---

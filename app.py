@@ -80,11 +80,12 @@ class Votacao(db.Model):
     sigaa_link = db.Column(db.String(255), nullable=False)
     admin_wallet_proponente = db.Column(db.String(42), nullable=True) 
     contract_address = db.Column(db.String(42), nullable=False, unique=True)
-    
-    data_inicio_chapa = db.Column(db.DateTime, nullable=False)
-    data_fim_chapa = db.Column(db.DateTime, nullable=False)
-    data_inicio_votacao = db.Column(db.DateTime, nullable=False)
-    data_fim_votacao = db.Column(db.DateTime, nullable=False)
+
+    data_assembleia_geral = db.Column(db.DateTime, nullable=True)
+    data_inicio_chapa = db.Column(db.DateTime, nullable=True)
+    data_fim_chapa = db.Column(db.DateTime, nullable=True)
+    data_inicio_votacao = db.Column(db.DateTime, nullable=True)
+    data_fim_votacao = db.Column(db.DateTime, nullable=True)
     
     chapas = db.relationship('Chapa', backref='votacao', lazy=True, cascade="all, delete-orphan")
     
@@ -222,21 +223,20 @@ def criar_votacao():
     data = request.json
     
     required_fields = [
-        'sigaa_link', 'campus', 'curso','data_inicio_chapa',
-        'data_fim_chapa', 'data_inicio_votacao', 'data_fim_votacao',
+        'sigaa_link', 'campus', 'curso','data_assembleia_geral',
         'admin_wallet', 'contract_address'
     ]
     if not all(k in data for k in required_fields):
         abort(400, description="Dados incompletos recebidos.")
     
     try:
-        data_inicio_chapa = datetime.fromisoformat(data['data_inicio_chapa'])
-        data_fim_chapa = datetime.fromisoformat(data['data_fim_chapa'])
-        data_inicio_votacao = datetime.fromisoformat(data['data_inicio_votacao'])
-        data_fim_votacao = datetime.fromisoformat(data['data_fim_votacao'])
+        # data_inicio_chapa = datetime.fromisoformat(data['data_inicio_chapa'])
+        # data_fim_chapa = datetime.fromisoformat(data['data_fim_chapa'])
+        # data_inicio_votacao = datetime.fromisoformat(data['data_inicio_votacao'])
+        data_assembleia_geral = datetime.fromisoformat(data['data_assembleia_geral'])
 
-        if not (data_fim_chapa < data_inicio_votacao < data_fim_votacao):
-            abort(400, description="Lógica de datas inválida. (Fim-Chapa < Inicio-Voto < Fim-Voto)")
+        # if not (data_fim_chapa < data_inicio_votacao < data_fim_votacao):
+        #     abort(400, description="Lógica de datas inválida. (Fim-Chapa < Inicio-Voto < Fim-Voto)")
 
         # --- GERAÇÃO DAS CHAVES PAILLIER ---
         print("Gerando chaves Paillier (1024-bit) para esta votação...")
@@ -248,10 +248,11 @@ def criar_votacao():
             campus=data['campus'], curso=data['curso'], sigaa_link=data['sigaa_link'],
             admin_wallet_proponente=data['admin_wallet'],
             contract_address=data['contract_address'],
-            data_inicio_chapa=data_inicio_chapa,
-            data_fim_chapa=data_fim_chapa,
-            data_inicio_votacao=data_inicio_votacao,
-            data_fim_votacao=data_fim_votacao,
+            data_assembleia_geral=data_assembleia_geral,
+            # data_inicio_chapa=data_inicio_chapa,
+            # data_fim_chapa=data_fim_chapa,
+            # data_inicio_votacao=data_inicio_votacao,
+            # data_fim_votacao=data_fim_votacao,
             
             # --- SALVANDO AS CHAVES NO BD ---
             paillier_n = str(public_key.n),
@@ -297,17 +298,18 @@ def get_votacoes():
                     estado_contrato_int = contrato_instance.functions.estadoAtual().call() 
                     
                     if estado_contrato_int == 0: # 0 = Inscricao
-                        if agora < votacao.data_inicio_chapa:
                             estado_contrato_str = "Aguardando Inscrição"
-                        else:
-                            estado_contrato_str = "Inscrição Aberta"
-                            # (A lógica de transação do relayer está OK)
-                            nonce = web3.eth.get_transaction_count(RELAYER_ADDRESS)
-                            tx = contrato_instance.functions.iniciarInscricao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 300000})
-                            signed_tx = web3.eth.account.sign_transaction(tx, private_key=RELAYER_PRIVATE_KEY)
-                            tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-                            tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-                            if tx_receipt.status != 0: print("Inscrição iniciada no contrato.")
+                        
+                        # if agora < votacao.data_inicio_chapa:
+                        # else:
+                        #     estado_contrato_str = "Inscrição Aberta"
+                        #     # (A lógica de transação do relayer está OK)
+                        #     nonce = web3.eth.get_transaction_count(RELAYER_ADDRESS)
+                        #     tx = contrato_instance.functions.iniciarInscricao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 300000})
+                        #     signed_tx = web3.eth.account.sign_transaction(tx, private_key=RELAYER_PRIVATE_KEY)
+                        #     tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                        #     tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+                        #     if tx_receipt.status != 0: print("Inscrição iniciada no contrato.")
 
                     elif estado_contrato_int == 1: # 1 = Votacao
                         if agora < votacao.data_fim_chapa:
@@ -343,6 +345,7 @@ def get_votacoes():
 
             resultado_final.append({
                 "id": votacao.id, "campus": votacao.campus, "curso": votacao.curso,
+                "data_assembleia_geral": votacao.data_assembleia_geral,
                 "admin_wallet_proponente": votacao.admin_wallet_proponente,
                 "contract_address": votacao.contract_address,
                 "estado_contrato_int": estado_contrato_int,
@@ -633,6 +636,59 @@ def apurar_votos(contract_address):
     # except Exception as e:
     #     print(f"ERRO NA APURAÇÃO: {e}")
     #     abort(500, description=f"Erro interno na apuração: {e}")
+
+# --- ROTA 10 (NOVA ROTA - DETALHES DA VOTAÇÃO) ---
+# (Endpoint para a "sobre-screen" do frontend)
+@app.route('/api/votacao-detalhes/<string:contract_address>', methods=['GET'])
+def get_votacao_detalhes(contract_address):
+    """
+    Busca os detalhes de uma votação específica para a tela "Sobre".
+    """
+    try:
+        votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+        if not votacao:
+            abort(404, description="Votação não encontrada.")
+        
+        # ATENÇÃO: A "Comissão Eleitoral" não está salva no seu banco de dados
+        # no modelo 'Votacao'.
+        #
+        # Estou retornando uma lista de exemplo (placeholder) para 
+        # corresponder ao que o frontend espera.
+        #
+        # Para isso funcionar de verdade, você precisaria adicionar
+        # um novo campo/tabela no BD para salvar a comissão.
+        # comissao_placeholder = [
+        #     "Prof. Dr. Exemplo Silva (Presidente)",
+        #     "Téc. Exemplo Santos (Mesário)",
+        #     "Aluno Exemplo Souza (Mesário)"
+        # ]
+
+        # Nota: Os campos de data (chapa, votacao) podem vir nulos (None)
+        # se eles não foram salvos durante a criação da votação 
+        # (pois você comentou essas linhas na rota /api/criar-votacao).
+        # O frontend que sugeri já está preparado para tratar isso.
+        
+        return jsonify({
+            "campus": votacao.campus,
+            "data_assembleia_geral": votacao.data_assembleia_geral,
+            
+            # Datas de Inscrição (podem ser None)
+            "data_inicio_chapa": votacao.data_inicio_chapa,
+            "data_fim_chapa": votacao.data_fim_chapa,
+            
+            # Datas de Votação (podem ser None)
+            "data_inicio_votacao": votacao.data_inicio_votacao,
+            "data_fim_votacao": votacao.data_fim_votacao,
+            "curso": votacao.curso,
+            "admin_wallet_proponente": votacao.admin_wallet_proponente
+            
+            # Comissão (usando o placeholder)
+            # "comissao": comissao_placeholder 
+        })
+
+    except Exception as e:
+        print(f"ERRO AO BUSCAR DETALHES: {e}")
+        abort(500, description=f"Erro interno ao buscar detalhes: {e}")
 
 
 if __name__ == '__main__':

@@ -61,13 +61,18 @@
                         <label for="curso-name" class="block text-sm font-medium text-gray-700 mb-2">Centro / Curso</label>
                         <input type="text" id="curso-name" name="curso-name" placeholder="CCN/Odontologia" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
+                    <div class="mt-4">
+                        <label for="assembleia-data" class="block text-sm font-medium text-gray-700 mb-2">Data da Assembléia Geral</label>
+                        <!-- <input type="text" id="curso-name" name="curso-name" placeholder="CCN/Odontologia" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required> -->
+                        <input type="datetime-local" id="data-assembleia" name="data-assembleia" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
                 </div>
                 
-                <!-- 2. Períodos (Datas) -->
+                <!--2. Períodos (Datas)
                 <div class="border-b pb-4 mb-4">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Períodos</h3>
                     <div class="space-y-4">
-                        <!-- NOVO: Adicionado data de INICIO da chapa -->
+                         NOVO: Adicionado data de INICIO da chapa 
                         <div>
                             <label for="data-inicio-chapa" class="block text-sm font-medium text-gray-700">Início da Inscrição de Chapas:</label>
                             <input type="datetime-local" id="data-inicio-chapa" name="data-inicio-chapa" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
@@ -81,18 +86,19 @@
                             <input type="datetime-local" id="data-inicio-votacao" name="data-inicio-votacao" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                         </div>
                         <div>
-                            <label for="data-fim-votacao" class="block text-sm font-medium text-gray-700">Fim da Votação:</label>
-                            <input type="datetime-local" id="data-fim-votacao" name="data-fim-votacao" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                            <label for="data-fim-votacao" class="block text-sm font-medium text-gray-700">Fim da Votação:</label> 
+                            <input type="datetime-local" id="data-fim-votacao" name="data-fim-votacao" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required> 
                         </div>
                     </div>
-                </div>
+                </div> -->
+                    
 
                 <!-- 3. Configuração (Blockchain) -->
                 <div class="border-b pb-4 mb-4">
-                    <h3 class="text-lg font-semibold text-gray-700 mb-2">3. Configuração (Blockchain)</h3>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Configuração (Blockchain)</h3>
                     <div>
-                        <label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">Link/Arquivo de Alunos (SIGAA):</label>
-                        <input type="text" id="sigaa-link" name="sigaa-link" placeholder="Caminho para o CSV ou Link" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        <label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">Link dos Alunos (SIGAA):</label>
+                        <input type="text" id="sigaa-link" name="sigaa-link" placeholder="Caminho para o Link" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
                     
                     <!-- O Proponente DEVE conectar a carteira para pagar o gás -->
@@ -101,7 +107,7 @@
                         <button type="button" id="btn-connect-metamask"
                                 class="w-full flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
                             <img src="https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg" alt="Logo MetaMask" class="w-6 h-6 mr-3">
-                            <span>Conectar Conta (Proponente)</span>
+                            <span>Conectar Conta</span>
                         </button>
                     </div>
                     
@@ -112,13 +118,107 @@
                 <div>
                     <!-- O botão de submit começa desabilitado -->
                     <button type="submit" id="btn-submit-poll" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                        Fazer Deploy (Pagar Gás)
+                        Fazer Deploy
                     </button>
-                </div>
+                </div> 
                 <button type="button" id="btn-back-home" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">
                     &larr; Voltar para o Início
                 </button>
             </form>
+        </div>
+
+        <!-- TELA 4: Saber Mais (Lista/Busca) -->
+        <div id="about-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Sobre a Votação
+            </h2>
+
+            <input type="hidden" id="sobre-contract-address">
+
+            <div class="border-b pb-4 mb-4 space-y-4">
+                
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Campus:</strong>
+                    <span id="sobre-campus" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Curso:</strong>
+                    <span id="sobre-curso" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Data da Assembleia:</strong>
+                    <span id="sobre-data-assembleia" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Período de Inscrição:</strong>
+                    <span id="sobre-data-inscricao" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Período de Votação:</strong>
+                    <span id="sobre-data-votacao" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Comissão Eleitoral:</strong>
+                    <div id="sobre-comissao" class="text-lg font-semibold text-gray-900 mt-1">
+                        ...
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 ">
+                <div id="info-sobre-votacao" class="block text-sm font-medium text-gray-700">
+                    
+                </div>
+                <button type="button" id="btn-inserir-comissao" class="w-full hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Inserir Comissão
+                </button>
+            </div>
+            
+            <div id="sobre-status" class="text-center font-medium text-blue-600 pt-4"></div>
+
+            <button type="button" id="btn-back-to-list-3" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar para a Lista
+            </button>
+        </div>
+
+        <!-- TELA : Cadastrar Comissao  -->
+        <div id="comissao-cadastro-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Cadastrar Comissão Eleitoral
+            </h2>
+
+            <form id="form-comissao">
+                
+                <div id="lista-comissao-container" class="space-y-4">
+                    </div>
+                
+                <div class="mt-4">
+                    <button type="button" id="btn-add-comissao" 
+                            class="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition duration-300">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Adicionar Membro
+                    </button>
+                </div>
+
+                <div class="mt-6 border-t pt-4">
+                    <button type="submit" id="btn-salvar-comissao"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        Salvar Comissão
+                    </button>
+                </div>
+                <div id="comissao-save-status" class="text-sm text-center font-medium mt-2"></div>
+            </form>
+
+            <button type="button" id="btn-back-sobre-votacao" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar para "Sobre"
+            </button>
         </div>
         
         <!-- TELA 3: PARTICIPAR (Lista/Busca) -->
@@ -133,11 +233,12 @@
 
         <!-- TELA 4: INSCREVER CHAPA (Oculta) -->
         <div id="chapa-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
-            <!-- (Sem mudanças) -->
+            <!-- (Sem mudanças)-->
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Inscrever Chapa</h2>
             <form id="chapa-form" class="space-y-4"><input type="hidden" id="chapa-contract-address"><div><label for="chapa-name" class="block text-sm font-medium text-gray-700 mb-2">Nome da Chapa</label><input type="text" id="chapa-name" name="chapa-name" placeholder="Chapa 1 - Renovação Total" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></div><div><label for="chapa-proposal" class="block text-sm font-medium text-gray-700 mb-2">Proposta da Chapa</label><textarea id="chapa-proposal" name="chapa-proposal" rows="5" placeholder="Nossa proposta foca em..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></textarea></div><div id="chapa-status" class="text-sm text-center font-medium"></div><div><button type="submit" id="btn-submit-chapa" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">Enviar Inscrição</button></div>
-            <button type="button" id="btn-back-to-list" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para a Lista</button>
-            </form>
+            
+            <button type="button" id="btn-back-to-list" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para a Lista</button> 
+            </form> 
         </div>
 
         <!-- TELA 5: VOTAR (Oculta) -->
@@ -183,6 +284,6 @@
     <script src="script.js" type="module" defer></script>
 
 </body>
-</html>  -->
+</html>  
 
 

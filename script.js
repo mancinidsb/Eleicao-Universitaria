@@ -12,6 +12,21 @@ function formatarDataParaInput(data) {
   return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
 }
 
+function formatarDataSimples(dataString) {
+    if (!dataString) return null;
+    try {
+        const data = new Date(dataString);
+        const options = {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+        };
+        // Retorna no formato: 14/11/2025, 16:48
+        return new Intl.DateTimeFormat('pt-BR', options).format(data).replace(',', ' às');
+    } catch (e) {
+        return dataString; // Retorna a string original se falhar
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- API URL ---
@@ -22,6 +37,24 @@ document.addEventListener('DOMContentLoaded', () => {
     const homeScreen = document.getElementById('home-screen');
     // ... (todos os seus seletores estão corretos) ...
     const createScreen = document.getElementById('create-screen');
+
+    const aboutScreen = document.getElementById('about-screen');
+
+    const comissaoCadastroScreen = document.getElementById('comissao-cadastro-screen');
+
+    const btnBackToList3 = document.getElementById('btn-back-to-list-3');
+    const sobreScreen = document.getElementById('sobre-screen');
+    const btnBackFromSobre = document.getElementById('btn-back-from-sobre');
+    const sobreContractAddressInput = document.getElementById('sobre-contract-address');
+    const sobreStatus = document.getElementById('sobre-status');
+    const sobreCampus = document.getElementById('sobre-campus');
+    const sobreDataAssembleia = document.getElementById('sobre-data-assembleia');
+    const sobreDataInscricao = document.getElementById('sobre-data-inscricao');
+    const sobreDataVotacao = document.getElementById('sobre-data-votacao');
+    const sobreComissao = document.getElementById('sobre-comissao');
+    const sobreCurso = document.getElementById('sobre-curso');
+
+
     const voteScreen = document.getElementById('vote-screen');
     const chapaScreen = document.getElementById('chapa-screen');
     const votarScreen = document.getElementById('votar-screen');
@@ -33,18 +66,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPollForm = document.getElementById('create-poll-form');
     const walletAddressInput = document.getElementById('wallet-address');
     const btnSubmitPoll = document.getElementById('btn-submit-poll');
-    const data_inicio_chapa = document.getElementById('data-inicio-chapa');
-    const data_fim_chapa = document.getElementById('data-fim-chapa');
-    const data_inicio_votacao = document.getElementById('data-inicio-votacao');
-    const data_fim_votacao = document.getElementById('data-fim-votacao');
-    const agora = new Date();
-    data_inicio_chapa.value = formatarDataParaInput(agora);
-    agora.setMinutes(agora.getMinutes() +5);
-    data_fim_chapa.value = formatarDataParaInput(agora); 
-    agora.setMinutes(agora.getMinutes() + 5);
-    data_inicio_votacao.value = formatarDataParaInput(agora);
-    agora.setMinutes(agora.getMinutes() + 10);
-    data_fim_votacao.value = formatarDataParaInput(agora);
+    // const data_inicio_chapa = document.getElementById('data-inicio-chapa');
+    // const data_fim_chapa = document.getElementById('data-fim-chapa');
+    // const data_inicio_votacao = document.getElementById('data-inicio-votacao');
+    // const data_fim_votacao = document.getElementById('data-fim-votacao');
+    // const agora = new Date();
+    // data_inicio_chapa.value = formatarDataParaInput(agora);
+    // agora.setMinutes(agora.getMinutes() +5);
+    // data_fim_chapa.value = formatarDataParaInput(agora); 
+    // agora.setMinutes(agora.getMinutes() + 5);
+    // data_inicio_votacao.value = formatarDataParaInput(agora);
+    // agora.setMinutes(agora.getMinutes() + 10);
+    // data_fim_votacao.value = formatarDataParaInput(agora);
     const btnBackHome2 = document.getElementById('btn-back-home-2'); 
     const searchForm = document.getElementById('search-form'); 
     const searchInput = document.getElementById('search-input'); 
@@ -67,6 +100,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const votarVoteStatus = document.getElementById('votar-vote-status');
     const btnSubmitVoto = document.getElementById('btn-submit-voto');
     const votarUserInfoTitulo = document.getElementById('votar-user-info-titulo');
+    const infoSobreVotacao = document.getElementById('info-sobre-votacao');
+    let currentVotacaoAdmin = null; 
+    // let contadorComissao = 0;
+
+    const btnBackSobreVotacao = document.getElementById('btn-back-sobre-votacao');
+
+    const btnInserirComissao = document.getElementById('btn-inserir-comissao'); 
+
+
+    // const comissaoCadastroScreen = document.getElementById('comissao-cadastro-screen');
+    // const btnInserirComissao = document.getElementById('btn-inserir-comissao');
+    const btnBackToSobre = document.getElementById('btn-back-to-sobre');
+    const formComissao = document.getElementById('form-comissao');
+    const listaComissaoContainer = document.getElementById('lista-comissao-container');
+    const btnAddComissao = document.getElementById('btn-add-comissao');
+    const comissaoSaveStatus = document.getElementById('comissao-save-status');
+    let contadorComissao = 0; // Variável para controlar os IDs
+
+
 
     // --- MUDANÇA PAILLIER ---
     // Variáveis de estado para o voto (ATUALIZADAS)
@@ -85,10 +137,16 @@ document.addEventListener('DOMContentLoaded', () => {
     function showScreen(screenToShow) {
         homeScreen.classList.add('hidden');
         createScreen.classList.add('hidden');
+        aboutScreen.classList.add('hidden');
         voteScreen.classList.add('hidden');
         chapaScreen.classList.add('hidden');
         votarScreen.classList.add('hidden');
+        comissaoCadastroScreen.classList.add('hidden');
+
         screenToShow.classList.remove('hidden');
+        
+
+        // screenToShow.classList.remove('hidden');
     }
     // ... (seus listeners de navegação estão corretos) ...
     btnShowCreate.addEventListener('click', (e) => { e.preventDefault(); showScreen(createScreen); });
@@ -97,6 +155,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnBackHome2.addEventListener('click', () => showScreen(homeScreen));
     btnBackToList.addEventListener('click', () => showScreen(voteScreen));
     btnBackToList2.addEventListener('click', () => showScreen(voteScreen));
+    btnBackToList3.addEventListener('click', () => showScreen(voteScreen));
+    btnBackSobreVotacao.addEventListener('click', () => showScreen(aboutScreen));
 
     // --- Lógica Tela 2 (Criar Votação) (Sem Mudanças) ---
     // Seu código de 'btnConnectMetamask' e 'createPollForm' está correto
@@ -140,10 +200,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminAddress = walletAddressInput.value;
         const campusName = document.getElementById('campus-name').value;
         const cursoName = document.getElementById('curso-name').value;
-        const dataInicioChapa = document.getElementById('data-inicio-chapa').value;
-        const dataFimChapa = document.getElementById('data-fim-chapa').value;
-        const dataInicioVotacao = document.getElementById('data-inicio-votacao').value;
-        const dataFimVotacao = document.getElementById('data-fim-votacao').value;
+        // const dataInicioChapa = document.getElementById('data-inicio-chapa').value;
+        // const dataFimChapa = document.getElementById('data-fim-chapa').value;
+        // const dataInicioVotacao = document.getElementById('data-inicio-votacao').value;
+        // const dataFimVotacao = document.getElementById('data-fim-votacao').value;
+        const dataAssembleiaGeral = document.getElementById('data-assembleia').value;
 
         try {
             metamaskStatus.textContent = 'Servidor está gerando Merkle Root...';
@@ -168,7 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const signer = await provider.getSigner();
             const factory = new ethers.ContractFactory(abi, bytecode, signer);
 
-            const contract = await factory.deploy(merkleRoot, relayerAddress);
+            const contract = await factory.deploy(merkleRoot, relayerAddress, campusName, cursoName, dataAssembleiaGeral);
 
             metamaskStatus.textContent = 'Aguardando confirmação da rede...';
             await contract.waitForDeployment();
@@ -188,10 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     contract_address: contractAddress,
                     campus: campusName,
                     curso: cursoName,
-                    data_inicio_chapa: dataInicioChapa,
-                    data_fim_chapa: dataFimChapa,
-                    data_inicio_votacao: dataInicioVotacao,
-                    data_fim_votacao: dataFimVotacao
+                    data_assembleia_geral: dataAssembleiaGeral
+                    // data_inicio_chapa: dataInicioChapa,
+                    // data_fim_chapa: dataFimChapa,
+                    // data_inicio_votacao: dataInicioVotacao,
+                    // data_fim_votacao: dataFimVotacao
                 })
             });
 
@@ -200,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
             metamaskStatus.textContent = `Votação criada! Contrato: ${contractAddress}`;
             metamaskStatus.classList.add('text-green-600');
             btnSubmitPoll.textContent = 'Votação Criada!';
+            btnSubmitPoll.disabled=false
             createPollForm.reset();
 
         } catch (err) {
@@ -213,7 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
             metamaskStatus.textContent = errorMsg;
             metamaskStatus.classList.add('text-red-500');
             btnSubmitPoll.textContent = 'Fazer Deploy (Pagar Gás)';
-            btnSubmitPoll.disabled = false;
+            // btnSubmitPoll.disabled = false;
         }
     });
 
@@ -271,7 +334,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const formatWallet = (wallet) => wallet ? `${wallet.substring(0, 6)}...${wallet.substring(wallet.length - 4)}` : 'N/A';
             card.dataset.pollName = `${votacao.curso} (${votacao.campus})`;
 
-            const estadoTexto = votacao.estado_contrato_str;
+            let estadoTexto = votacao.estado_contrato_str;
             let estadoCor = 'text-gray-600';
             if (estadoTexto.includes('Aberta')) estadoCor = 'text-green-600';
             if (estadoTexto.includes('Encerrada')) estadoCor = 'text-red-600';
@@ -279,9 +342,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let botoesHTML = '';
 
-            let data_fim_chapa = new Date(votacao.data_fim_chapa);
-            let data_inicio_votacao = new Date(votacao.data_inicio_votacao);
-            let data_fim_votacao = new Date(votacao.data_fim_votacao);
+            // let data_fim_chapa = new Date(votacao.data_fim_chapa);
+            // let data_inicio_votacao = new Date(votacao.data_inicio_votacao);
+            // let data_fim_votacao = new Date(votacao.data_fim_votacao);
 
             const options = {
                 year: '2-digit',
@@ -293,9 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 timeZone: 'UTC'  // ESSENCIAL: Usa o horário UTC (GMT) original
             };
 
-            data_fim_chapa = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_chapa);
-            data_inicio_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_inicio_votacao);
-            data_fim_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_votacao);
+            // data_fim_chapa = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_chapa);
+            // data_inicio_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_inicio_votacao);
+            // data_fim_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_votacao);
 
             let data_final = '';
 
@@ -304,19 +367,21 @@ document.addEventListener('DOMContentLoaded', () => {
             switch(votacao.estado_contrato_int) {
                 case 0: // Pendente
                     if (estadoTexto.includes('Aguardando')) {
-                        botoesHTML = `<span class="text-sm text-gray-500">Aguardando início das inscrições.</span>`;
+                        // botoesHTML = `<span class="text-sm text-gray-500">Aguardando início das inscrições.</span>`;
+                        botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-saber-mais w-full flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Saber Mais</button>`;
+                        estadoTexto=""
                     } else { // 'Inscrição Aberta' (baseado na data do app)
                         botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-inscrever-chapa w-full flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Inscrever Chapa</button>`;
-                        data_final = `${data_fim_chapa.replace(',', '')}`;
+                        // data_final = `${data_fim_chapa.replace(',', '')}`;
                     }
                     break;
                 case 1: // Inscricao
                     if (estadoTexto.includes('Encerrada')) { // Data do app já passou
                         botoesHTML = `<span class="text-sm text-gray-500">Inscrição encerrada. Aguardando votação.</span>`;
-                        data_final = `${data_inicio_votacao}`;
+                        // data_final = `${data_inicio_votacao}`;
                     } else {
                         botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-inscrever-chapa w-full flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Inscrever Chapa</button>`;
-                        data_final = `${data_fim_chapa.replace(',', '')}`;
+                        // data_final = `${data_fim_chapa.replace(',', '')}`;
                     } 
                     break;
                 case 2: // Votacao
@@ -325,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         data_final = `${data_fim_votacao.replace(',', '')}`;
                     } else {
                         botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-votar-agora w-full flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Votar Agora</button>`;
-                        data_final = `${data_fim_votacao.replace(',', '')}`;
+                        // data_final = `${data_fim_votacao.replace(',', '')}`;
                     }
                     break;
                 case 3: // Encerrada
@@ -366,6 +431,58 @@ document.addEventListener('DOMContentLoaded', () => {
         fetchVotacoes(searchTerm);
     });
 
+    btnInserirComissao.addEventListener('click', async () => {
+        
+        // 1. Verifica se o admin foi carregado
+        if (!currentVotacaoAdmin) {
+            alert("Erro: Endereço do admin não encontrado. Recarregue a página.");
+            return;
+        }
+
+        // 2. Verifica se o MetaMask está instalado
+        if (typeof window.ethereum === 'undefined') {
+            alert("Por favor, instale o MetaMask para executar esta ação.");
+            return;
+        }
+
+        let userAddress;
+        try {
+            // 3. Pede para o usuário conectar (ABRE O POP-UP)
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (!accounts || accounts.length === 0) {
+                alert("Você precisa conectar uma carteira para continuar.");
+                return;
+            }
+            userAddress = accounts[0];
+
+        } catch (err) {
+            console.error("Erro ao conectar MetaMask:", err);
+            if (err.code === 4001) {
+                alert("Você rejeitou a conexão com o MetaMask.");
+            } else {
+                alert("Erro ao conectar MetaMask.");
+            }
+            return;
+        }
+
+        // 4. Compara o endereço conectado com o admin (usa ethers.getAddress)
+        const checksumAdmin = ethers.getAddress(currentVotacaoAdmin);
+        const checksumUser = ethers.getAddress(userAddress);
+
+        if (checksumUser === checksumAdmin) {
+            // SUCESSO! É O ADMIN.
+            // Limpa o container e adiciona o primeiro membro
+            listaComissaoContainer.innerHTML = '';
+            contadorComissao = 0; // Reseta o contador
+            adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
+            
+            comissaoSaveStatus.textContent = '';
+            showScreen(comissaoCadastroScreen);
+        } 
+        // FALHA! NÃO É O ADMIN.
+        // alert(`Acesso Negado.\n\nA carteira conectada (${checksumUser.substring(0, 6)}...${checksumUser.slice(-4)}) \nnão é a administradora desta votação (${checksumAdmin.substring(0, 6)}...${checksumAdmin.slice(-4)}).`);
+        
+    });
 
     // --- MUDANÇA: Atualizado o listener de clique para a apuração ---
     votacoesList.addEventListener('click', async (e) => {
@@ -424,6 +541,191 @@ document.addEventListener('DOMContentLoaded', () => {
                 statusDiv.textContent = `Erro na apuração: ${err.message}`;
                 statusDiv.classList.add('text-red-500');
             }
+        }else if (target.classList.contains('btn-saber-mais')){
+            prepareSobreScreen(contractAddress)
+            showScreen(aboutScreen);
+        }
+    });
+
+    async function prepareSobreScreen(contractAddress){
+        sobreStatus.textContent = 'Carregando detalhes...';
+        sobreStatus.classList.remove('text-red-500');
+        sobreStatus.classList.add('text-blue-600');
+        
+        // --- LÓGICA CORRIGIDA ---
+        currentVotacaoAdmin = null; // Reseta o admin
+        btnInserirComissao.classList.add('hidden'); // Esconde o botão por padrão
+        // -------------------------
+        
+        sobreContractAddressInput.value = contractAddress;
+        sobreCampus.textContent = '...';
+        sobreDataAssembleia.textContent = '...';
+        sobreDataInscricao.textContent = '...';
+        sobreDataVotacao.textContent = '...';
+        sobreComissao.innerHTML = '...';
+        sobreCurso.innerHTML = '...'; 
+
+        try {
+            // 2. Busca os dados do backend
+            const response = await fetch(`${API_URL}/api/votacao-detalhes/${contractAddress}`, {
+                 method: 'GET',
+                 headers: { 'ngrok-skip-browser-warning': 'true' }
+            });
+
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.description || 'Não foi possível carregar os detalhes.');
+            }
+
+            const data = await response.json();
+
+            const agora = new Date();
+            const data_assembleia = new Date(data.data_assembleia_geral);
+
+
+            
+            // --- INÍCIO DA LÓGICA DE ADMIN (CORRIGIDA) ---
+            // (IMPORTANTE: Sua API /api/votacao-detalhes/ DEVE retornar 'admin_wallet_proponente')
+            if (data.admin_wallet_proponente && agora>=data_assembleia) {
+                // 1. Apenas salva o endereço do admin para o clique
+                currentVotacaoAdmin = data.admin_wallet_proponente;
+                
+                // 2. MOSTRA O BOTÃO.
+                // A verificação do MetaMask será feita no clique.
+                btnInserirComissao.classList.remove('hidden'); 
+                infoSobreVotacao.textContent=""
+            }else{
+                infoSobreVotacao.textContent="Aguardando Assebléia"
+            }
+            // --- FIM DA LÓGICA DE ADMIN ---
+
+            // 3. Preenche os dados (lógica existente)
+            sobreCampus.textContent = data.campus || 'Não Definido';
+            sobreCurso.textContent = data.curso || 'Não Definido';
+            sobreDataAssembleia.textContent = formatarDataSimples(data.data_assembleia_geral) || 'Não Definido';
+            
+            sobreDataInscricao.textContent = data.data_inicio_chapa ? 
+                `De ${formatarDataSimples(data.data_inicio_chapa)} até ${formatarDataSimples(data.data_fim_chapa)}` 
+                : 'Não Definido';
+            
+            sobreDataVotacao.textContent = data.data_inicio_votacao ? 
+                `De ${formatarDataSimples(data.data_inicio_votacao)} até ${formatarDataSimples(data.data_fim_votacao)}` 
+                : 'Não Definido';
+
+            if (data.comissao && Array.isArray(data.comissao)) {
+                sobreComissao.innerHTML = data.comissao.map(membro => `<p>${membro}</p>`).join('');
+            } else {
+                sobreComissao.textContent = 'Não Definido';
+            }
+
+            sobreStatus.textContent = ''; // Limpa o status
+
+        } catch (err) {
+            sobreStatus.textContent = err.message;
+            sobreStatus.classList.add('text-red-500');
+        }
+    }
+
+    function adicionarBlocoMembro() {
+        contadorComissao++; // Incrementa o contador
+
+        const novoBloco = document.createElement('div');
+        novoBloco.className = 'bloco-membro border rounded-lg p-4 space-y-3 relative bg-gray-50';
+
+        novoBloco.innerHTML = `
+            <h3 class="font-semibold text-gray-800">Membro ${contadorComissao}</h3>
+            
+            <div>
+                <label for="comissao-nome-${contadorComissao}" class="block text-sm font-medium text-gray-700">Nome</label>
+                <input type="text" id="comissao-nome-${contadorComissao}" name="nome[]" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+            </div>
+            
+            <div>
+                <label for="comissao-matricula-${contadorComissao}" class="block text-sm font-medium text-gray-700">Matrícula</label>
+                <input type="text" id="comissao-matricula-${contadorComissao}" name="matricula[]" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+            </div>
+            
+            <div>
+                <label for="comissao-email-${contadorComissao}" class="block text-sm font-medium text-gray-700">Email Institucional</label>
+                <input type="email" id="comissao-email-${contadorComissao}" name="email[]" 
+                       class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+            </div>
+
+            <button type="button" class="btn-remover-membro absolute top-3 right-3 text-red-500 hover:text-red-700 font-bold text-xl" title="Remover Membro">&times;</button>
+        `;
+        
+        listaComissaoContainer.appendChild(novoBloco);
+    }
+
+    // Listener para o botão "Adicionar Membro"
+    btnAddComissao.addEventListener('click', adicionarBlocoMembro);
+
+    // Listener para os botões "Remover" (usando delegação de evento)
+    listaComissaoContainer.addEventListener('click', (evento) => {
+        if (evento.target.classList.contains('btn-remover-membro')) {
+            // Pega o 'div' pai (o bloco-membro) e o remove
+            const blocoParaRemover = evento.target.closest('.bloco-membro');
+            blocoParaRemover.remove();
+
+            // Atualiza a numeração dos blocos restantes
+            const todosBlocos = listaComissaoContainer.querySelectorAll('.bloco-membro');
+            todosBlocos.forEach((bloco, index) => {
+                bloco.querySelector('h3').textContent = `Membro ${index + 1}`;
+            });
+        }
+    });
+
+    // Listener para "Salvar Comissão"
+    formComissao.addEventListener('submit', async (evento) => {
+        evento.preventDefault();
+        comissaoSaveStatus.textContent = 'Salvando...';
+        comissaoSaveStatus.classList.remove('text-red-500', 'text-green-600');
+        comissaoSaveStatus.classList.add('text-blue-600');
+
+        const formData = new FormData(formComissao);
+        const nomes = formData.getAll('nome[]');
+        const matriculas = formData.getAll('matricula[]');
+        const emails = formData.getAll('email[]');
+        const contractAddress = document.getElementById('sobre-contract-address').value;
+
+        // Aqui você enviaria os dados para o seu backend (API)
+        console.log("Salvando comissão para o contrato:", contractAddress);
+        console.log("Nomes:", nomes);
+        console.log("Matrículas:", matriculas);
+        console.log("Emails:", emails);
+
+        try {
+            // --- Exemplo de como enviar para o backend ---
+            // const response = await fetch(`${API_URL}/api/cadastrar-comissao`, {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({
+            //         contract_address: contractAddress,
+            //         nomes: nomes,
+            //         matriculas: matriculas,
+            //         emails: emails
+            //     })
+            // });
+            // if (!response.ok) throw new Error('Falha ao salvar no backend.');
+            
+            // Simulação de sucesso (Remova isso quando tiver a API)
+            await new Promise(resolve => setTimeout(resolve, 1000)); 
+
+            comissaoSaveStatus.textContent = 'Comissão salva com sucesso!';
+            comissaoSaveStatus.classList.add('text-green-600');
+            
+            // Opcional: Voltar para a tela "Sobre" após salvar
+            setTimeout(() => {
+                showScreen(aboutScreen);
+                // Você pode querer recarregar os dados da tela "Sobre" aqui
+                // ex: prepareSobreScreen(contractAddress);
+            }, 2000);
+
+        } catch (err) {
+            comissaoSaveStatus.textContent = `Erro: ${err.message}`;
+            comissaoSaveStatus.classList.add('text-red-500');
         }
     });
 
@@ -465,6 +767,76 @@ document.addEventListener('DOMContentLoaded', () => {
             btnSubmitChapa.textContent = 'Enviar Inscrição';
         }
     });
+
+    btnInserirComissao.addEventListener('click', async () => { // <-- JÁ DEVE SER ASYNC
+        
+        // 1. Verifica se o admin foi carregado
+        if (!currentVotacaoAdmin) {
+            alert("Erro: Endereço do admin não encontrado. Recarregue a página.");
+            return;
+        }
+
+        // 2. Verifica se o MetaMask está instalado
+        if (typeof window.ethereum === 'undefined') {
+            alert("Por favor, instale o MetaMask para executar esta ação.");
+            return;
+        }
+
+        let userAddress;
+        try {
+            // 3. Pede para o usuário conectar (ABRE O POP-UP)
+            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+            if (!accounts || accounts.length === 0) {
+                alert("Você precisa conectar uma carteira para continuar.");
+                return;
+            }
+            userAddress = accounts[0];
+
+        } catch (err) {
+            console.error("Erro ao conectar MetaMask:", err);
+            if (err.code === 4001) {
+                alert("Você rejeitou a conexão com o MetaMask.");
+            } else {
+                alert("Erro ao conectar MetaMask.");
+            }
+            return;
+        }
+
+        // 4. Compara o endereço conectado com o admin (usa ethers.getAddress)
+        const checksumAdmin = ethers.getAddress(currentVotacaoAdmin);
+        const checksumUser = ethers.getAddress(userAddress);
+
+        if (checksumUser === checksumAdmin) {
+            // SUCESSO! É O ADMIN.
+            // Limpa o container e adiciona o primeiro membro
+            listaComissaoContainer.innerHTML = '';
+            contadorComissao = 0; // Reseta o contador
+            adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
+            
+            comissaoSaveStatus.textContent = '';
+            showScreen(comissaoCadastroScreen);
+        } else {
+            // FALHA! NÃO É O ADMIN.
+            alert(`Acesso Negado.\n\nA carteira conectada (${checksumUser.substring(0, 6)}...${checksumUser.slice(-4)}) \nnão é a administradora desta votação (${checksumAdmin.substring(0, 6)}...${checksumAdmin.slice(-4)}).`);
+        }
+    });
+
+    // Botão na tela "Sobre" que ABRE a tela de "Inserir Comissão"
+    // btnInserirComissao.addEventListener('click', () => {
+    //     // Limpa o container e adiciona o primeiro membro
+    //     listaComissaoContainer.innerHTML = '';
+    //     contadorComissao = 0; // Reseta o contador
+    //     adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
+        
+    //     comissaoSaveStatus.textContent = '';
+    //     showScreen(comissaoCadastroScreen);
+    // });
+
+    // Botão "Voltar" DENTRO da tela "Inserir Comissão"
+    // btnBackToSobre.addEventListener('click', () => {
+    //     // Ele deve voltar para a tela "Sobre" (about-screen)
+    //     showScreen(aboutScreen); 
+    // });
 
     // --- Lógica Tela 5 (Votar) ---
     function prepareVotarScreen(contractAddress, pollName) {
