@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
+///te
 /// @title VotingBadge (soulbound ERC-721)
 /// @notice Emite emblemas para eleitores; somente a chapa atual pode mintar.
 contract VotingBadge is ERC721 {
