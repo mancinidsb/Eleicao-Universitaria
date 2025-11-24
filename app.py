@@ -16,6 +16,10 @@ from unidecode import unidecode
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from raspagem import *
+
+FIXED_REDIRECT_URI = "https://ballastic-latricia-delectably.ngrok-free.dev/api/autenticar-callback"
+
 # --- NOVA IMPORTAÇÃO ---
 from phe import paillier
 
@@ -88,6 +92,10 @@ class Votacao(db.Model):
     data_fim_votacao = db.Column(db.DateTime, nullable=True)
     
     chapas = db.relationship('Chapa', backref='votacao', lazy=True, cascade="all, delete-orphan")
+    comissao_membros = db.relationship('Comissao', backref='votacao', lazy=True, cascade="all, delete-orphan")
+    alunos_validos = db.relationship('AlunoValido', backref='votacao', lazy=True, cascade="all, delete-orphan")
+    
+    estado_contrato = db.Column(db.Integer, nullable=False)
     
     # --- NOVAS COLUNAS PAILLIER ---
     # Armazenamos os componentes para recriar as chaves
@@ -105,6 +113,7 @@ class Chapa(db.Model):
     proposta = db.Column(db.Text, nullable=False)
     numero_chapa = db.Column(db.Integer, nullable=False) 
     votacao_id = db.Column(db.Integer, db.ForeignKey('votacao.id'), nullable=False)
+    situacao = db.Column(db.Boolean, default=False, nullable=False)
 
 # --- NOVA TABELA (Quadro de Avisos / Bulletin Board) ---
 class VotoArmazenado(db.Model):
@@ -119,6 +128,44 @@ class VotoArmazenado(db.Model):
     # Ex: '["...enc(0)...", "...enc(1)...", "...enc(0)..."]'
     voto_criptografado_json = db.Column(db.Text, nullable=False)
 
+class AlunoValido(db.Model):
+    """
+    Armazena a lista de TODOS os alunos aptos a votar
+    em uma determinada votação.
+    Isso substitui o "scraping" repetido.
+    """
+    __tablename__ = 'aluno_valido'
+    id = db.Column(db.Integer, primary_key=True)
+    votacao_id = db.Column(db.Integer, db.ForeignKey('votacao.id'), nullable=False)
+    matricula = db.Column(db.String(100), nullable=False)
+    nome = db.Column(db.String(200), nullable=False)
+
+    # Isso cria um índice rápido para a consulta: 
+    # "Esta matrícula existe nesta votação?"
+    __table_args__ = (db.UniqueConstraint('votacao_id', 'matricula', name='_votacao_matricula_uc'),)
+
+    def __repr__(self):
+        return f'<AlunoValido {self.matricula} ({self.votacao_id})>'
+
+class Comissao(db.Model):
+    __tablename__ = 'comissao'
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Colunas do membro da comissão
+    nome = db.Column(db.String(200), nullable=False)
+    matricula = db.Column(db.String(100), nullable=False) 
+    email = db.Column(db.String(120), nullable=False)
+    
+    # Chave estrangeira que liga este membro à votação principal
+    votacao_id = db.Column(db.Integer, db.ForeignKey('votacao.id'), nullable=False)
+
+    # Garante que o mesmo aluno (matrícula) não possa ser
+    # adicionado duas vezes na comissão da *mesma* votação.
+    __table_args__ = (db.UniqueConstraint('matricula', 'votacao_id', name='_matricula_votacao_uc'),)
+    __table_args__ = (db.UniqueConstraint('email', 'votacao_id', name='_email_votacao_uc'),)
+
+    def __repr__(self):
+        return f'<Comissao {self.nome} ({self.matricula})>'
 
 # --- (Funções de Merkle Tree e Scraping - Sem Mudanças) ---
 SEGREDO_ELEICAO = "ufpi-eleicao-2025.2"
@@ -173,18 +220,11 @@ def get_contract_instance(contract_address: str):
     except Exception as e:
         print(f"Erro ao carregar contrato {contract_address}: {e}")
         return None
-def _simular_scraping_sigaa(sigaa_link: str) -> Dict[str, str]:
-    print(f"Simulando scraping do link: {sigaa_link}")
+def _simular_scraping_sigaa(nome_curso: str) -> Dict[str, str]:
+    # print(f"Simulando scraping do link: {sigaa_link}")
     # ... (mesmo dicionário de alunos) ...
-    return {
-        "20169004867": "ADAILTON SILVA PALHANO",
-        "20229038498": "ALAN NUNES VELOSO NOGUEIRA",
-        "20189016391": "ALAN VITOR BRITO AMORIM",
-        "2019011094": "ALEXANDRE JOSE CANTUARIA MONTEIRO ROSA FILHO",
-        "20229020690": "GUILHERME MANCINI DE SOUSA BARROSO",
-        "20229004767": "THALYSSON ARAUJO MELO",
-        "20229004515": "IURY FRANCISCO DE MENEZES MANICOBA FILHO"
-    }
+    raspagem = Raspagem(nome_curso)
+    return raspagem.dicionario
 def normalize_name(name: str) -> str:
     if not name: return ""
     name = unidecode(name) # Remove acentos
@@ -249,6 +289,7 @@ def criar_votacao():
             admin_wallet_proponente=data['admin_wallet'],
             contract_address=data['contract_address'],
             data_assembleia_geral=data_assembleia_geral,
+            estado_contrato=0,
             # data_inicio_chapa=data_inicio_chapa,
             # data_fim_chapa=data_fim_chapa,
             # data_inicio_votacao=data_inicio_votacao,
@@ -261,6 +302,22 @@ def criar_votacao():
             paillier_q = str(private_key.q)
         )
         db.session.add(nova_votacao)
+
+        mapa_alunos = _simular_scraping_sigaa(data['sigaa_link'])
+        lista_alunos_para_db = []
+        for matricula, nome in mapa_alunos.items():
+            aluno = AlunoValido(
+                votacao=nova_votacao, # Vincula o aluno à votação
+                matricula=matricula,
+                nome=nome
+            )
+            lista_alunos_para_db.append(aluno)
+
+        # 3. Salve todos os alunos no banco
+        if not lista_alunos_para_db:
+             abort(400, description="A lista de alunos (SIGAA) não pode estar vazia.")
+             
+        db.session.add_all(lista_alunos_para_db)
         db.session.commit()
     
     except Exception as e:
@@ -282,7 +339,7 @@ def get_votacoes():
         query = Votacao.query
         if search_term:
             search_filter = f"%{search_term}%"
-            query = query.filter(or_(Votacao.campus.ilike(search_filter), Votacao.curso.ilike(search_filter), Votacao.admin_wallet_proponente.ilike(search_filter)))
+            query = query.filter(or_(Votacao.campus.ilike(search_filter), Votacao.curso.ilike(search_filter), Votacao.admin_wallet_proponente.ilike(search_filter), Votacao.contract_address.ilike(search_filter)))
         
         votacoes_db = query.order_by(Votacao.id.desc()).all()
         resultado_final = []
@@ -300,16 +357,20 @@ def get_votacoes():
                     if estado_contrato_int == 0: # 0 = Inscricao
                             estado_contrato_str = "Aguardando Inscrição"
                         
-                        # if agora < votacao.data_inicio_chapa:
-                        # else:
-                        #     estado_contrato_str = "Inscrição Aberta"
-                        #     # (A lógica de transação do relayer está OK)
-                        #     nonce = web3.eth.get_transaction_count(RELAYER_ADDRESS)
-                        #     tx = contrato_instance.functions.iniciarInscricao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 300000})
-                        #     signed_tx = web3.eth.account.sign_transaction(tx, private_key=RELAYER_PRIVATE_KEY)
-                        #     tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-                        #     tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-                        #     if tx_receipt.status != 0: print("Inscrição iniciada no contrato.")
+                            if agora < votacao.data_inicio_chapa: 
+                                pass
+                            else:
+                                votacao.estado_contrato=1
+                                db.session.commit()
+
+                                estado_contrato_str = "Inscrição Aberta"
+                                # (A lógica de transação do relayer está OK)
+                                nonce = web3.eth.get_transaction_count(RELAYER_ADDRESS)
+                                tx = contrato_instance.functions.iniciarInscricao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 300000})
+                                signed_tx = web3.eth.account.sign_transaction(tx, private_key=RELAYER_PRIVATE_KEY)
+                                tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
+                                tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
+                                if tx_receipt.status != 0: print("Inscrição iniciada no contrato.")
 
                     elif estado_contrato_int == 1: # 1 = Votacao
                         if agora < votacao.data_fim_chapa:
@@ -342,7 +403,8 @@ def get_votacoes():
                         
             except Exception as e:
                 print(f"Erro ao ler/atualizar estado do contrato {votacao.contract_address}: {e}")
-
+            # estado_contrato_str = "Aguardando Inscrição"
+            # estado_contrato_int=0
             resultado_final.append({
                 "id": votacao.id, "campus": votacao.campus, "curso": votacao.curso,
                 "data_assembleia_geral": votacao.data_assembleia_geral,
@@ -400,100 +462,268 @@ def inscrever_chapa():
 # --- Rota 5 (Login Google) e Rota 6 (Callback) (Sem Mudanças) ---
 # ... (seu código idêntico para auth_google e autenticar_callback) ...
 # ATENÇÃO: A Rota 6 (autenticar_callback) será atualizada
+
 @app.route('/api/auth/google')
 def auth_google():
-    # ... (código idêntico) ...
     contract_address = request.args.get('contract_address')
-    matricula = request.args.get('matricula')
-    if not contract_address or not matricula:
-        abort(400, description="Matrícula e endereço do contrato são necessários.")
-    
+    matricula = request.args.get('matricula') # Pode ser None se for modo comissao
+    mode = request.args.get('mode', 'votar') # 'votar' ou 'comissao'
+
+    if not contract_address:
+        abort(400, description="Endereço do contrato é obrigatório.")
+
     votacao = Votacao.query.filter_by(contract_address=contract_address).first()
     if not votacao: abort(404, description="Votação não encontrada.")
-    
-    mapa_alunos = _simular_scraping_sigaa(votacao.sigaa_link)
-    if matricula not in mapa_alunos:
-        abort(403, description="Matrícula não encontrada na lista pública.")
-    
-    agora = datetime.now()
-    if agora < votacao.data_inicio_votacao:
-        return "<h1>Erro: O período de votação ainda não começou.</h1>", 403
-    if agora > votacao.data_fim_votacao:
-        return "<h1>Erro: O período de votação já encerrou.</h1>", 403
+
+    # Lógica específica para cada modo
+    if mode == 'votar':
+        if not matricula: abort(400, description="Matrícula necessária para votar.")
+        # ... (validações de data e aluno existente - MANTENHA O QUE JÁ EXISTE) ...
+        # ... (lógica rápida de AlunoValido que implementamos antes) ...
+        aluno_valido = AlunoValido.query.filter_by(votacao_id=votacao.id, matricula=matricula).first()
+        if not aluno_valido: abort(403, description="Matrícula não encontrada.")
         
+        session['nome_sigaa_normalizado'] = normalize_name(aluno_valido.nome)
+        session['matricula'] = matricula
+
+    elif mode == 'comissao':
+        # No modo comissão, não precisamos da matrícula agora, validaremos o email no callback
+        pass
+
     session['contract_address'] = contract_address
-    session['matricula'] = matricula
-    session['nome_sigaa_normalizado'] = normalize_name(mapa_alunos[matricula])
-    flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
+    session['auth_mode'] = mode # Salva o modo na sessão
+
+    # redirect_uri_https = url_for('autenticar_callback', _external=True).replace("http://", "https://")
+    redirect_uri_https = url_for('autenticar_callback', _external=True).replace("http://", "https://")
+
+    # flow = Flow.from_client_secrets_file(
+    #     CLIENT_SECRETS_FILE, 
+    #     scopes=SCOPES, 
+    #     redirect_uri=redirect_uri_https # <--- Usa a URL com HTTPS forçado
+    # )
+
+    flow = Flow.from_client_secrets_file(
+        CLIENT_SECRETS_FILE, 
+        scopes=SCOPES, 
+        redirect_uri=FIXED_REDIRECT_URI 
+    )
+    
+    # flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
     authorization_url, state = flow.authorization_url()
     session['state'] = state
     return redirect(authorization_url)
 
+# @app.route('/api/auth/google')
+# def auth_google():
+#     # ... (código idêntico) ...
+#     contract_address = request.args.get('contract_address')
+#     matricula = request.args.get('matricula')
+#     if not contract_address or not matricula:
+#         abort(400, description="Matrícula e endereço do contrato são necessários.")
+    
+#     votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+#     if not votacao: abort(404, description="Votação não encontrada.")
+    
+#     mapa_alunos = _simular_scraping_sigaa(votacao.sigaa_link)
+#     if matricula not in mapa_alunos:
+#         abort(403, description="Matrícula não encontrada na lista pública.")
+    
+#     agora = datetime.now()
+#     if agora < votacao.data_inicio_votacao:
+#         return "<h1>Erro: O período de votação ainda não começou.</h1>", 403
+#     if agora > votacao.data_fim_votacao:
+#         return "<h1>Erro: O período de votação já encerrou.</h1>", 403
+        
+#     session['contract_address'] = contract_address
+#     session['matricula'] = matricula
+#     session['nome_sigaa_normalizado'] = normalize_name(mapa_alunos[matricula])
+#     flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
+#     authorization_url, state = flow.authorization_url()
+#     session['state'] = state
+#     return redirect(authorization_url)
+
 # --- Rota 6 (Callback) (ATUALIZADA) ---
+
 @app.route('/api/autenticar-callback')
 def autenticar_callback():
     try:
         if request.args.get('state') != session.get('state'): abort(403, "Erro de estado (CSRF).")
-        flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
-        flow.fetch_token(authorization_response=request.url)
+        
+        # flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
+        
+        redirect_uri_https = url_for('autenticar_callback', _external=True).replace("http://", "https://")
+
+        code = request.args.get('code')
+        if not code:
+            abort(400, "Código de autenticação não encontrado.")
+
+
+        flow = Flow.from_client_secrets_file(
+            CLIENT_SECRETS_FILE, 
+            scopes=SCOPES, 
+            redirect_uri=FIXED_REDIRECT_URI # <--- Usa a URL com HTTPS forçado
+        )
+        # flow.fetch_token(authorization_response=request.url)
+        flow.fetch_token(code=code)
+
+        # authorization_response = request.url.replace("http://", "https://")
+        # flow.fetch_token(authorization_response=authorization_response)
+        
         credentials = flow.credentials
-        id_info = id_token.verify_oauth2_token(credentials.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
-        str_script=""
+        id_info = id_token.verify_oauth2_token(credentials.id_token, google_requests.Request(), GOOGLE_CLIENT_ID, clock_skew_in_seconds=5)
+        
         email_google = id_info.get('email')
-        dominio_google = id_info.get('hd')
-        nome_google = id_info.get('name')
+        # ... (outros dados do google) ...
         
-        if dominio_google != "ufpi.edu.br":
-             return f"<h1>Erro: Apenas e-mails @ufpi.edu.br são permitidos. Tente novamente.</h>{str_script}", 403
-
-        matricula = session.get('matricula')
         contract_address = session.get('contract_address')
-        nome_sigaa_normalizado = session.get('nome_sigaa_normalizado')
-        nome_google_normalizado = normalize_name(nome_google)
-        
-        if nome_sigaa_normalizado not in nome_google_normalizado and nome_google_normalizado not in nome_sigaa_normalizado:
-            return f"<h1>Erro: O nome da sua conta Google ({nome_google}) não corresponde ao nome da matrícula ({nome_sigaa_normalizado}).</h1>{str_script}", 403
-
-        nullifier_hash = _get_nullifier(matricula)
-        nullifier_hash_bytes = bytes.fromhex(nullifier_hash.replace("0x", ""))
-        contrato = get_contract_instance(contract_address)
-        if not contrato: abort(500, "Falha ao carregar o contrato.")
-        
-        ja_votou = contrato.functions.nullifiersUsados(nullifier_hash_bytes).call()
-        if ja_votou:
-            return f"<h1>Erro: Esta matrícula já foi usada para votar.</h1>{str_script}", 403
-        
-        estado_contrato = contrato.functions.estadoAtual().call()
-        if estado_contrato != 2: # 2 = Votacao
-            return f"<h1>Erro: A votação não está aberta no contrato.</h1>{str_script}", 403
+        auth_mode = session.get('auth_mode', 'votar') # Recupera o modo
 
         votacao = Votacao.query.filter_by(contract_address=contract_address).first()
-        mapa_alunos = _simular_scraping_sigaa(votacao.sigaa_link)
-        lista_completa_matriculas = list(mapa_alunos.keys())
-        all_leaves = _get_all_leaves(lista_completa_matriculas)
-        tree_levels = _build_tree_levels(all_leaves)
-        merkle_proof = _get_merkle_proof(nullifier_hash, tree_levels)
-        chapas_db = Chapa.query.filter_by(votacao_id=votacao.id).order_by(Chapa.numero_chapa.asc()).all()
-        chapas_json = [{"numero": c.numero_chapa, "nome": c.nome_chapa, "proposta": c.proposta} for c in chapas_db]
+        if not votacao: abort(404, "Votação não encontrada.")
 
-        # --- PREPARA OS DADOS PARA O FRONTEND ---
-        session['vote_data'] = {
-            "autenticado": True, 
-            "merkleProof": merkle_proof, 
-            "nullifierHash": f"0x{nullifier_hash}",
-            "chapas": chapas_json, 
-            "contract_address": contract_address,
-            "aluno_info": {"email": email_google, "nome": nome_google},
+        if auth_mode == 'comissao':
+            membro = Comissao.query.filter_by(votacao_id=votacao.id, email=email_google).first()
             
-            # --- ENVIA A CHAVE PÚBLICA PARA O FRONTEND ---
-            "paillier_n": votacao.paillier_n,
-            "paillier_g": votacao.paillier_g,
-            "num_chapas": len(chapas_json) # Informa ao frontend o tamanho do array
-        }
-        return "<script>window.opener.postMessage('auth_success', '*'); window.close();</script>"
+            if not membro:
+                return f"<h1>Erro: O email {email_google} não faz parte da comissão eleitoral desta votação.</h1><script>window.close();</script>", 403
+
+            # Sucesso! Retorna os dados para o frontend abrir a tela de avaliação
+            session['comissao_data'] = {
+                "autenticado": True,
+                "is_comissao": True,
+                "contract_address": contract_address,
+                "membro_nome": membro.nome
+            }
+            return "<script>window.opener.postMessage('auth_comissao_success', '*'); window.close();</script>"
+        
+        else:
+
+            if request.args.get('state') != session.get('state'): abort(403, "Erro de estado (CSRF).")
+            # flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
+            # flow.fetch_token(authorization_response=request.url)
+            credentials = flow.credentials
+            id_info = id_token.verify_oauth2_token(credentials.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
+            str_script=""
+            email_google = id_info.get('email')
+            dominio_google = id_info.get('hd')
+            nome_google = id_info.get('name')
+            
+            if dominio_google != "ufpi.edu.br":
+                return f"<h1>Erro: Apenas e-mails @ufpi.edu.br são permitidos. Tente novamente.</h>{str_script}", 403
+
+            matricula = session.get('matricula')
+            contract_address = session.get('contract_address')
+            nome_sigaa_normalizado = session.get('nome_sigaa_normalizado')
+            nome_google_normalizado = normalize_name(nome_google)
+            
+            if nome_sigaa_normalizado not in nome_google_normalizado and nome_google_normalizado not in nome_sigaa_normalizado:
+                return f"<h1>Erro: O nome da sua conta Google ({nome_google}) não corresponde ao nome da matrícula ({nome_sigaa_normalizado}).</h1>{str_script}", 403
+
+            nullifier_hash = _get_nullifier(matricula)
+            nullifier_hash_bytes = bytes.fromhex(nullifier_hash.replace("0x", ""))
+            contrato = get_contract_instance(contract_address)
+            if not contrato: abort(500, "Falha ao carregar o contrato.")
+            
+            ja_votou = contrato.functions.nullifiersUsados(nullifier_hash_bytes).call()
+            if ja_votou:
+                return f"<h1>Erro: Esta matrícula já foi usada para votar.</h1>{str_script}", 403
+            
+            estado_contrato = contrato.functions.estadoAtual().call()
+            if estado_contrato != 2: # 2 = Votacao
+                return f"<h1>Erro: A votação não está aberta no contrato.</h1>{str_script}", 403
+
+            votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+            mapa_alunos = _simular_scraping_sigaa(votacao.sigaa_link)
+            lista_completa_matriculas = list(mapa_alunos.keys())
+            all_leaves = _get_all_leaves(lista_completa_matriculas)
+            tree_levels = _build_tree_levels(all_leaves)
+            merkle_proof = _get_merkle_proof(nullifier_hash, tree_levels)
+            chapas_db = Chapa.query.filter_by(votacao_id=votacao.id).order_by(Chapa.numero_chapa.asc()).all()
+            chapas_json = [{"numero": c.numero_chapa, "nome": c.nome_chapa, "proposta": c.proposta} for c in chapas_db]
+
+            # --- PREPARA OS DADOS PARA O FRONTEND ---
+            session['vote_data'] = {
+                "autenticado": True, 
+                "merkleProof": merkle_proof, 
+                "nullifierHash": f"0x{nullifier_hash}",
+                "chapas": chapas_json, 
+                "contract_address": contract_address,
+                "aluno_info": {"email": email_google, "nome": nome_google},
+                
+                # --- ENVIA A CHAVE PÚBLICA PARA O FRONTEND ---
+                "paillier_n": votacao.paillier_n,
+                "paillier_g": votacao.paillier_g,
+                "num_chapas": len(chapas_json) # Informa ao frontend o tamanho do array
+            }
+            return "<script>window.opener.postMessage('auth_success', '*'); window.close();</script>"
     except Exception as e:
         print(f"Erro no callback do Google: {e}")
         return f"<h1>Erro interno do servidor: {e}</h1><script>window.close();</script>", 500
+
+# @app.route('/api/autenticar-callback')
+# def autenticar_callback():
+#     try:
+#         if request.args.get('state') != session.get('state'): abort(403, "Erro de estado (CSRF).")
+#         flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
+#         flow.fetch_token(authorization_response=request.url)
+#         credentials = flow.credentials
+#         id_info = id_token.verify_oauth2_token(credentials.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
+#         str_script=""
+#         email_google = id_info.get('email')
+#         dominio_google = id_info.get('hd')
+#         nome_google = id_info.get('name')
+        
+#         if dominio_google != "ufpi.edu.br":
+#              return f"<h1>Erro: Apenas e-mails @ufpi.edu.br são permitidos. Tente novamente.</h>{str_script}", 403
+
+#         matricula = session.get('matricula')
+#         contract_address = session.get('contract_address')
+#         nome_sigaa_normalizado = session.get('nome_sigaa_normalizado')
+#         nome_google_normalizado = normalize_name(nome_google)
+        
+#         if nome_sigaa_normalizado not in nome_google_normalizado and nome_google_normalizado not in nome_sigaa_normalizado:
+#             return f"<h1>Erro: O nome da sua conta Google ({nome_google}) não corresponde ao nome da matrícula ({nome_sigaa_normalizado}).</h1>{str_script}", 403
+
+#         nullifier_hash = _get_nullifier(matricula)
+#         nullifier_hash_bytes = bytes.fromhex(nullifier_hash.replace("0x", ""))
+#         contrato = get_contract_instance(contract_address)
+#         if not contrato: abort(500, "Falha ao carregar o contrato.")
+        
+#         ja_votou = contrato.functions.nullifiersUsados(nullifier_hash_bytes).call()
+#         if ja_votou:
+#             return f"<h1>Erro: Esta matrícula já foi usada para votar.</h1>{str_script}", 403
+        
+#         estado_contrato = contrato.functions.estadoAtual().call()
+#         if estado_contrato != 2: # 2 = Votacao
+#             return f"<h1>Erro: A votação não está aberta no contrato.</h1>{str_script}", 403
+
+#         votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+#         mapa_alunos = _simular_scraping_sigaa(votacao.sigaa_link)
+#         lista_completa_matriculas = list(mapa_alunos.keys())
+#         all_leaves = _get_all_leaves(lista_completa_matriculas)
+#         tree_levels = _build_tree_levels(all_leaves)
+#         merkle_proof = _get_merkle_proof(nullifier_hash, tree_levels)
+#         chapas_db = Chapa.query.filter_by(votacao_id=votacao.id).order_by(Chapa.numero_chapa.asc()).all()
+#         chapas_json = [{"numero": c.numero_chapa, "nome": c.nome_chapa, "proposta": c.proposta} for c in chapas_db]
+
+#         # --- PREPARA OS DADOS PARA O FRONTEND ---
+#         session['vote_data'] = {
+#             "autenticado": True, 
+#             "merkleProof": merkle_proof, 
+#             "nullifierHash": f"0x{nullifier_hash}",
+#             "chapas": chapas_json, 
+#             "contract_address": contract_address,
+#             "aluno_info": {"email": email_google, "nome": nome_google},
+            
+#             # --- ENVIA A CHAVE PÚBLICA PARA O FRONTEND ---
+#             "paillier_n": votacao.paillier_n,
+#             "paillier_g": votacao.paillier_g,
+#             "num_chapas": len(chapas_json) # Informa ao frontend o tamanho do array
+#         }
+#         return "<script>window.opener.postMessage('auth_success', '*'); window.close();</script>"
+#     except Exception as e:
+#         print(f"Erro no callback do Google: {e}")
+#         return f"<h1>Erro interno do servidor: {e}</h1><script>window.close();</script>", 500
 
 # --- Rota 7 (Get Vote Data) (ATUALIZADA) ---
 @app.route('/api/get-vote-data')
@@ -641,6 +871,8 @@ def apurar_votos(contract_address):
 # (Endpoint para a "sobre-screen" do frontend)
 @app.route('/api/votacao-detalhes/<string:contract_address>', methods=['GET'])
 def get_votacao_detalhes(contract_address):
+    def format_iso(dt):
+        return dt.isoformat() + 'Z' if dt else None
     """
     Busca os detalhes de uma votação específica para a tela "Sobre".
     """
@@ -662,6 +894,12 @@ def get_votacao_detalhes(contract_address):
         #     "Téc. Exemplo Santos (Mesário)",
         #     "Aluno Exemplo Souza (Mesário)"
         # ]
+        membros_comissao = Comissao.query.filter_by(votacao_id=votacao.id).all()
+        if membros_comissao:
+            comissao_formatada = [f"{membro.nome}<br>({membro.email})" for membro in membros_comissao]
+        else:
+            comissao_formatada = ["Não Definido"]
+
 
         # Nota: Os campos de data (chapa, votacao) podem vir nulos (None)
         # se eles não foram salvos durante a criação da votação 
@@ -670,25 +908,216 @@ def get_votacao_detalhes(contract_address):
         
         return jsonify({
             "campus": votacao.campus,
-            "data_assembleia_geral": votacao.data_assembleia_geral,
+            "data_assembleia_geral": format_iso(votacao.data_assembleia_geral),
             
             # Datas de Inscrição (podem ser None)
-            "data_inicio_chapa": votacao.data_inicio_chapa,
-            "data_fim_chapa": votacao.data_fim_chapa,
+            "data_inicio_chapa": format_iso(votacao.data_inicio_chapa),
+            "data_fim_chapa": format_iso(votacao.data_fim_chapa),
             
             # Datas de Votação (podem ser None)
-            "data_inicio_votacao": votacao.data_inicio_votacao,
-            "data_fim_votacao": votacao.data_fim_votacao,
+            "data_inicio_votacao": format_iso(votacao.data_inicio_votacao),
+            "data_fim_votacao": format_iso(votacao.data_fim_votacao),
             "curso": votacao.curso,
-            "admin_wallet_proponente": votacao.admin_wallet_proponente
+            "admin_wallet_proponente": votacao.admin_wallet_proponente,
+            "estado_contrato": votacao.estado_contrato,
             
             # Comissão (usando o placeholder)
-            # "comissao": comissao_placeholder 
+            "comissao": comissao_formatada
         })
 
     except Exception as e:
         print(f"ERRO AO BUSCAR DETALHES: {e}")
         abort(500, description=f"Erro interno ao buscar detalhes: {e}")
+
+@app.route('/api/julgar-chapa', methods=['POST'])
+def julgar_chapa():
+    data = request.json
+    if not all(k in data for k in ['chapa_id', 'aprovado']): # aprovado: boolean
+        abort(400, description="Dados incompletos.")
+
+    chapa_id = data['chapa_id']
+    aprovado = data['aprovado']
+
+    chapa = Chapa.query.get(chapa_id)
+    if not chapa: abort(404, description="Chapa não encontrada.")
+
+    try:
+        if aprovado:
+            chapa.situacao = True # Aprova a chapa
+            db.session.commit()
+            return jsonify(message=f"Chapa '{chapa.nome_chapa}' aprovada com sucesso!"), 200
+        else:
+            # Se rejeitado, deletamos a chapa (ou poderíamos ter um status 'rejeitado')
+            db.session.delete(chapa)
+            db.session.commit()
+            return jsonify(message=f"Chapa '{chapa.nome_chapa}' foi rejeitada e removida."), 200
+            
+    except Exception as e:
+        db.session.rollback()
+        abort(500, description=f"Erro ao julgar chapa: {e}")
+
+@app.route('/api/chapas-pendentes/<string:contract_address>', methods=['GET'])
+def get_chapas_pendentes(contract_address):
+    # Nota: Em um sistema real, você verificaria a sessão do usuário aqui também.
+    # Por simplicidade, assumimos que o frontend só chama isso se autenticado.
+    
+    votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+    if not votacao: abort(404, description="Votação não encontrada.")
+
+    # Busca chapas com situacao=False
+    chapas = Chapa.query.filter_by(votacao_id=votacao.id, situacao=False).all()
+    
+    resultado = []
+    for chapa in chapas:
+        resultado.append({
+            "id": chapa.id,
+            "numero": chapa.numero_chapa,
+            "nome": chapa.nome_chapa,
+            "proposta": chapa.proposta
+        })
+    
+    return jsonify(resultado), 200
+
+@app.route('/api/cadastrar-comissao', methods=['POST'])
+def cadastrar_comissao():
+    data = request.json
+    
+    # 1. Validação correta, baseada no seu JavaScript
+    required_fields = ['contract_address', 'nomes', 'matriculas', 'emails']
+    if not all(k in data for k in required_fields):
+        abort(400, description="Dados incompletos: Faltando contract_address, nomes, matriculas ou emails.")
+        
+    contract_address = data['contract_address']
+    nomes = data['nomes']
+    matriculas = data['matriculas']
+    emails = data['emails']
+
+    # 2. Verifica se as listas têm o mesmo tamanho
+    if not (len(nomes) == len(matriculas) == len(emails)):
+        abort(400, description="Erro nos dados: As listas (nomes, matriculas, emails) têm tamanhos diferentes.")
+
+    if len(nomes) == 0:
+        abort(400, description="Nenhum membro da comissão foi enviado.")
+
+    try:
+        # 3. Encontra a Votação
+        votacao = Votacao.query.filter_by(contract_address=contract_address).first()
+        if not votacao:
+            abort(404, description="Votação não encontrada com este contract_address.")
+
+        # 5. Valida CADA membro ANTES de salvar no BD
+        novos_membros_objetos = [] # Lista temporária
+        for i in range(len(nomes)):
+            nome_membro = nomes[i]
+            matricula_membro = matriculas[i]
+            email_membro = emails[i]
+
+            # Verificação 1: Checa o email institucional (sem mudança)
+            if not email_membro.endswith("@ufpi.edu.br"):
+                return jsonify(message=f"O aluno '{nome_membro}' ({email_membro}) não possui email institucional."), 400
+                # abort(400, description=f"O membro '{nome_membro}' ({email_membro}) não possui um email institucional válido (@ufpi.edu.br).")
+
+            # Verificação 2: Checa se a matrícula existe NO BANCO (MUDANÇA)
+            # Esta consulta é muito rápida pois usa o índice da tabela AlunoValido
+            aluno_existe = AlunoValido.query.filter_by(
+                votacao_id=votacao.id, 
+                matricula=matricula_membro
+            ).first()  # .first() é otimizado para parar na primeira ocorrência
+
+            if not aluno_existe:
+                return jsonify(message=f"O aluno '{nome_membro}' ({matricula_membro}) não foi encontrado."), 400
+                #abort(400, description=f"O membro '{nome_membro}' (matrícula {matricula_membro}) não foi encontrado na lista de alunos desta votação.")
+
+            nome_frontend_normalizado = normalize_name(nome_membro)
+            nome_db_normalizado = normalize_name(aluno_existe.nome)
+
+            if nome_frontend_normalizado != nome_db_normalizado:
+                return jsonify(message=f"O nome '{nome_membro}' não corresponde ao nome registrado para a matrícula {matricula_membro}. Esperado: '{aluno_existe.nome}'."), 400
+                # abort(400, description=f"O nome '{nome_membro}' não corresponde ao nome registrado para a matrícula {matricula_membro}. Esperado: '{aluno_existe.nome}'.")
+
+            # Se passou nas validações, cria o objeto (sem mudança)
+            membro = Comissao(
+                votacao_id=votacao.id,
+                nome=nome_membro,
+                matricula=matricula_membro,
+                email=email_membro
+            )
+            novos_membros_objetos.append(membro)
+
+        # --- FIM DA VALIDAÇÃO RÁPIDA ---
+
+        # 6. Limpa a comissão antiga (sem mudança)
+        Comissao.query.filter_by(votacao_id=votacao.id).delete()
+
+        # 7. Adiciona os novos membros validados (sem mudança)
+        db.session.add_all(novos_membros_objetos)
+        db.session.commit()
+        
+        # 8. Retorna sucesso (sem mudança)
+        return jsonify(message=f"Comissão com {len(novos_membros_objetos)} membros cadastrada com sucesso!"), 201
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO CADASTRAR COMISSÃO: {e}")
+        # Retorna a descrição do erro (ex: "O membro '...' não foi encontrado...")
+        return jsonify(message=f"A comissão possui alunos com emails iguais."), 500
+        # abort(500, description=f"Erro interno ao salvar a comissão: {e}")
+
+@app.route('/api/get-comissao-data')
+def get_comissao_data():
+    data = session.pop('comissao_data', None)
+    if not data: return jsonify({"autenticado": False}), 401
+    return jsonify(data), 200
+
+# --- ROTA 12 (NOVA - SALVAR DATAS) ---
+@app.route('/api/salvar-datas', methods=['POST'])
+def salvar_datas():
+    data = request.json
+    
+    # 1. Validação básica
+    campos_necessarios = ['contract_address', 'inicio_chapa', 'fim_chapa', 'inicio_votacao', 'fim_votacao']
+    if not all(k in data for k in campos_necessarios):
+        abort(400, description="Todos os campos de data são obrigatórios.")
+
+    try:
+        # 2. Busca a votação
+        votacao = Votacao.query.filter_by(contract_address=data['contract_address']).first()
+        if not votacao:
+            abort(404, description="Votação não encontrada.")
+
+        # 3. Converte strings para objetos datetime
+        inicio_chapa = datetime.fromisoformat(data['inicio_chapa'])
+        fim_chapa = datetime.fromisoformat(data['fim_chapa'])
+        inicio_votacao = datetime.fromisoformat(data['inicio_votacao'])
+        fim_votacao = datetime.fromisoformat(data['fim_votacao'])
+
+        # 4. Validação Lógica (Cronologia)
+        # Regra: Início Chapa < Fim Chapa <= Início Votação < Fim Votação
+        if inicio_chapa >= fim_chapa:
+            abort(400, description="Erro: O fim da inscrição de chapa deve ser depois do início.")
+        
+        if fim_chapa > inicio_votacao:
+            abort(400, description="Erro: A votação não pode começar antes do fim das inscrições de chapa.")
+            
+        if inicio_votacao >= fim_votacao:
+            abort(400, description="Erro: O fim da votação deve ser depois do início.")
+
+        # 5. Atualiza o Banco de Dados
+        votacao.data_inicio_chapa = inicio_chapa
+        votacao.data_fim_chapa = fim_chapa
+        votacao.data_inicio_votacao = inicio_votacao
+        votacao.data_fim_votacao = fim_votacao
+
+        db.session.commit()
+
+        return jsonify(message="Datas definidas com sucesso!"), 200
+
+    except ValueError:
+        abort(400, description="Formato de data inválido.")
+    except Exception as e:
+        db.session.rollback()
+        print(f"ERRO AO SALVAR DATAS: {e}")
+        abort(500, description=f"Erro interno: {e}")
 
 
 if __name__ == '__main__':

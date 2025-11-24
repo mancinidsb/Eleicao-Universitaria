@@ -6,3 +6,4 @@ google-auth-oauthlib
 unidecode
 py-solc-x
 phe
+beautifulsoup4

@@ -165,18 +165,21 @@
 
                 <div>
                     <strong class="block text-sm font-medium text-gray-700">Comissão Eleitoral:</strong>
-                    <div id="sobre-comissao" class="text-lg font-semibold text-gray-900 mt-1">
+                    <div id="sobre-comissao" class="text-sm font-semibold text-gray-900 mt-1">
                         ...
                     </div>
                 </div>
             </div>
 
-            <div class="mt-6 ">
+            <div class="mt-6 flex flex-col gap-3">
                 <div id="info-sobre-votacao" class="block text-sm font-medium text-gray-700">
                     
                 </div>
                 <button type="button" id="btn-inserir-comissao" class="w-full hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
                     Inserir Comissão
+                </button>
+                <button type="button" id="btn-avaliar-chapas" class="hidden w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                    Avaliar Chapas
                 </button>
             </div>
             
@@ -203,7 +206,7 @@
                     <button type="button" id="btn-add-comissao" 
                             class="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition duration-300">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-                        Adicionar Membro
+                        Adicionar Aluno
                     </button>
                 </div>
 
@@ -239,6 +242,25 @@
             
             <button type="button" id="btn-back-to-list" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para a Lista</button> 
             </form> 
+        </div>
+
+        <div id="avaliar-chapas-screen" class="w-full max-w-2xl p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Avaliação de Candidaturas
+            </h2>
+            <p class="text-center text-gray-600 mb-6" id="avaliar-welcome-msg">
+                Área restrita da Comissão Eleitoral
+            </p>
+
+            <div id="lista-chapas-pendentes" class="space-y-4">
+                </div>
+            
+            <div id="avaliar-status" class="text-center font-medium mt-4"></div>
+
+            <button type="button" id="btn-back-from-avaliar" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar
+            </button>
         </div>
 
         <!-- TELA 5: VOTAR (Oculta) -->
@@ -279,6 +301,39 @@
         </div>
 
     </main>
+
+    <div id="datas-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="modal-backdrop fixed inset-0 bg-gray-800 bg-opacity-75"></div>
+    <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg p-6 z-10 relative">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Definir Datas</h2>
+        <form id="form-datas-modal">
+            <input type="hidden" id="modal-datas-contract-address">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Início Inscrição Chapa</label>
+                    <input type="datetime-local" id="modal-inicio-chapa" name="inicio_chapa" class="w-full border p-2 rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fim Inscrição Chapa</label>
+                    <input type="datetime-local" id="modal-fim-chapa" name="fim_chapa" class="w-full border p-2 rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Início Votação</label>
+                    <input type="datetime-local" id="modal-inicio-votacao" name="inicio_votacao" class="w-full border p-2 rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fim Votação</label>
+                    <input type="datetime-local" id="modal-fim-votacao" name="fim_votacao" class="w-full border p-2 rounded" required>
+                </div>
+            </div>
+            <div id="modal-datas-status" class="text-center mt-2 text-sm font-bold"></div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="btn-fechar-modal" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Salvar Datas</button>
+            </div>
+        </form>
+        </div>
+    </div>
 
     <!-- Carrega o arquivo JavaScript externo -->
     <script src="script.js" type="module" defer></script>

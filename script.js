@@ -12,18 +12,69 @@ function formatarDataParaInput(data) {
   return `${ano}-${mes}-${dia}T${hora}:${minuto}`;
 }
 
-function formatarDataSimples(dataString) {
+// function formatarDataSimples(dataString) {
+//     if (!dataString) return null;
+//     try {
+//         const data = new Date(dataString);
+//         const options = {
+//             year: 'numeric', month: '2-digit', day: '2-digit',
+//             hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+//         };
+//         // Retorna no formato: 14/11/2025, 16:48
+//         return new Intl.DateTimeFormat('pt-BR', options).format(data).replace(',', '');
+//     } catch (e) {
+//         return dataString; // Retorna a string original se falhar
+//     }
+// }
+
+function formatarData(dataString) {
     if (!dataString) return null;
     try {
+        // Se a string vier sem o 'Z' no final (comum no SQLite), 
+        // adicionamos para garantir que o JS leia como UTC puro.
+        if (!dataString.endsWith('Z')) {
+            dataString += 'Z';
+        }
+        
         const data = new Date(dataString);
+        
         const options = {
-            year: 'numeric', month: '2-digit', day: '2-digit',
-            hour: '2-digit', minute: '2-digit', timeZone: 'UTC'
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', 
+            timeZone: 'UTC' // <--- O SEGREDO: Força mostrar o horário original
         };
-        // Retorna no formato: 14/11/2025, 16:48
-        return new Intl.DateTimeFormat('pt-BR', options).format(data).replace(',', ' às');
+        
+        return new Intl.DateTimeFormat('pt-BR', options).format(data).replace(',', '');
     } catch (e) {
-        return dataString; // Retorna a string original se falhar
+        return dataString;
+    }
+}
+
+function formatarDataSimples(dataString) {
+    if (!dataString) return '---';
+    
+    try {
+        // 1. Cria o objeto Data
+        const data = new Date(dataString);
+
+        // 2. Opções para FORÇAR o navegador a usar UTC
+        // Isso ignora o fuso horário do seu computador
+        const options = {
+            year: 'numeric', 
+            month: '2-digit', 
+            day: '2-digit',
+            hour: '2-digit', 
+            minute: '2-digit', 
+            timeZone: 'UTC' // <--- ESSENCIAL: Mantém o horário original do BD
+        };
+        
+        // 3. Formata (pt-BR usa dd/mm/aaaa)
+        // O replace remove a vírgula que o navegador coloca entre data e hora
+        return new Intl.DateTimeFormat('pt-BR', options).format(data).replace(',', '');
+        
+    } catch (e) {
+        console.error("Erro data:", e);
+        return dataString;
     }
 }
 
@@ -53,6 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sobreDataVotacao = document.getElementById('sobre-data-votacao');
     const sobreComissao = document.getElementById('sobre-comissao');
     const sobreCurso = document.getElementById('sobre-curso');
+    const datasModal = document.getElementById('datas-modal');
+    const btnFecharModal = document.getElementById('btn-fechar-modal');
+    const modalBackdrop = datasModal.querySelector('.modal-backdrop');
 
 
     const voteScreen = document.getElementById('vote-screen');
@@ -78,6 +132,11 @@ document.addEventListener('DOMContentLoaded', () => {
     // data_inicio_votacao.value = formatarDataParaInput(agora);
     // agora.setMinutes(agora.getMinutes() + 10);
     // data_fim_votacao.value = formatarDataParaInput(agora);
+    const avaliarChapasScreen = document.getElementById('avaliar-chapas-screen');
+    const listaChapasPendentes = document.getElementById('lista-chapas-pendentes');
+    const avaliarStatus = document.getElementById('avaliar-status');
+    const btnBackFromAvaliar = document.getElementById('btn-back-from-avaliar');
+    const avaliarWelcomeMsg = document.getElementById('avaliar-welcome-msg');
     const btnBackHome2 = document.getElementById('btn-back-home-2'); 
     const searchForm = document.getElementById('search-form'); 
     const searchInput = document.getElementById('search-input'); 
@@ -100,6 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const votarVoteStatus = document.getElementById('votar-vote-status');
     const btnSubmitVoto = document.getElementById('btn-submit-voto');
     const votarUserInfoTitulo = document.getElementById('votar-user-info-titulo');
+    const btnAvaliarChapas = document.getElementById('btn-avaliar-chapas');
     const infoSobreVotacao = document.getElementById('info-sobre-votacao');
     let currentVotacaoAdmin = null; 
     // let contadorComissao = 0;
@@ -142,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chapaScreen.classList.add('hidden');
         votarScreen.classList.add('hidden');
         comissaoCadastroScreen.classList.add('hidden');
+        avaliarChapasScreen.classList.add('hidden');
 
         screenToShow.classList.remove('hidden');
         
@@ -157,6 +218,8 @@ document.addEventListener('DOMContentLoaded', () => {
     btnBackToList2.addEventListener('click', () => showScreen(voteScreen));
     btnBackToList3.addEventListener('click', () => showScreen(voteScreen));
     btnBackSobreVotacao.addEventListener('click', () => showScreen(aboutScreen));
+    btnFecharModal.addEventListener('click', () => datasModal.classList.add('hidden'));
+    modalBackdrop.addEventListener('click', () => datasModal.classList.add('hidden'));
 
     // --- Lógica Tela 2 (Criar Votação) (Sem Mudanças) ---
     // Seu código de 'btnConnectMetamask' e 'createPollForm' está correto
@@ -362,11 +425,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let data_final = '';
 
-            
+            let menu=0;
+            let texto="Aguardando";
             // (0=Pendente, 1=Inscricao, 2=Votacao, 3=Encerrada)
-            switch(votacao.estado_contrato_int) {
+            switch(menu){//votacao.estado_contrato_int) {
                 case 0: // Pendente
-                    if (estadoTexto.includes('Aguardando')) {
+                    if (texto.includes('Aguardando')){//estadoTexto.includes('Aguardando')) {
                         // botoesHTML = `<span class="text-sm text-gray-500">Aguardando início das inscrições.</span>`;
                         botoesHTML = `<button data-contract="${votacao.contract_address}" class="btn-saber-mais w-full flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">Saber Mais</button>`;
                         estadoTexto=""
@@ -468,17 +532,96 @@ document.addEventListener('DOMContentLoaded', () => {
         // 4. Compara o endereço conectado com o admin (usa ethers.getAddress)
         const checksumAdmin = ethers.getAddress(currentVotacaoAdmin);
         const checksumUser = ethers.getAddress(userAddress);
+        const action = btnInserirComissao.dataset.action;
 
-        if (checksumUser === checksumAdmin) {
-            // SUCESSO! É O ADMIN.
-            // Limpa o container e adiciona o primeiro membro
-            listaComissaoContainer.innerHTML = '';
-            contadorComissao = 0; // Reseta o contador
-            adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
+        if (action === 'inscrever') {
+            // === AÇÃO PÚBLICA ===
+            // Qualquer carteira conectada pode inscrever chapa
             
-            comissaoSaveStatus.textContent = '';
-            showScreen(comissaoCadastroScreen);
-        } 
+            // AÇÃO: IR PARA TELA DE INSCRIÇÃO DE CHAPA
+            chapaContractAddressInput.value = sobreContractAddressInput.value;
+
+            let searchTerm = `${sobreContractAddressInput.value}`;
+            let url = `${API_URL}/api/votacoes`;
+            url += `?search=${encodeURIComponent(searchTerm)}`;
+            const response = await fetch(url, { credentials: 'include' });
+            
+            // Limpa o formulário de chapa
+            chapaForm.reset();
+            chapaStatus.textContent = '';
+            btnSubmitChapa.disabled = false;
+            btnSubmitChapa.textContent = 'Enviar Inscrição';
+            
+            // Navega para a tela
+            showScreen(chapaScreen);
+        }else if (action==='votar'){
+            // console.log("VOTAR")
+            // showScreen(votarScreen);
+            const contractAddress = sobreContractAddressInput.value;
+            const campus = sobreCampus.textContent;
+            const curso = sobreCurso.textContent;
+            const pollName = `${curso} (${campus})`;
+            prepareVotarScreen(contractAddress, pollName);
+            showScreen(votarScreen);
+        }
+        
+        else{
+
+            if (checksumUser === checksumAdmin) {
+            // SUCESSO: É o admin!
+            
+            // --- DECISÃO: QUAL TELA ABRIR? ---
+                const action = btnInserirComissao.dataset.action;
+
+                if (action === 'datas') {
+                    // ABRIR MODAL DE DATAS
+                    document.getElementById('modal-datas-contract-address').value = sobreContractAddressInput.value;
+                    // (Opcional: Limpar os inputs de data antes de abrir)
+                    datasModal.classList.remove('hidden');
+                }else if (action==='inscrever'){
+
+                    let searchTerm = `${sobreContractAddressInput.value}`;
+                    let url = `${API_URL}/api/votacoes`;
+                    url += `?search=${encodeURIComponent(searchTerm)}`; 
+                    
+                    const response = await fetch(url, { credentials: 'include' }); 
+                    if (!response.ok) { throw new Error('Não foi possível buscar as votações.'); }
+                    
+                    const votacoes = await response.json(); 
+
+
+                    chapaContractAddressInput.value = sobreContractAddressInput.value;
+                    chapaForm.reset();
+                    chapaStatus.textContent = '';
+                    btnSubmitChapa.disabled = false;
+                    btnSubmitChapa.textContent = 'Enviar Inscrição';
+                    showScreen(chapaScreen);
+
+                } 
+                else {
+                    // ABRIR TELA DE COMISSÃO (Comportamento original)
+                    listaComissaoContainer.innerHTML = '';
+                    contadorComissao = 0; 
+                    adicionarBlocoMembro(); 
+                    comissaoSaveStatus.textContent = '';
+                    showScreen(comissaoCadastroScreen);
+                }
+
+            } else {
+                alert("Acesso Negado: Você não é o admin desta votação.");
+            }
+        }
+
+        // if (checksumUser === checksumAdmin) {
+        //     // SUCESSO! É O ADMIN.
+        //     // Limpa o container e adiciona o primeiro membro
+        //     listaComissaoContainer.innerHTML = '';
+        //     contadorComissao = 0; // Reseta o contador
+        //     adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
+            
+        //     comissaoSaveStatus.textContent = '';
+        //     showScreen(comissaoCadastroScreen);
+        // } 
         // FALHA! NÃO É O ADMIN.
         // alert(`Acesso Negado.\n\nA carteira conectada (${checksumUser.substring(0, 6)}...${checksumUser.slice(-4)}) \nnão é a administradora desta votação (${checksumAdmin.substring(0, 6)}...${checksumAdmin.slice(-4)}).`);
         
@@ -548,81 +691,237 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function prepareSobreScreen(contractAddress){
+        // 1. Reset visual
         sobreStatus.textContent = 'Carregando detalhes...';
-        sobreStatus.classList.remove('text-red-500');
-        sobreStatus.classList.add('text-blue-600');
+        currentVotacaoAdmin = null; 
+        btnInserirComissao.classList.add('hidden'); 
+        btnAvaliarChapas.classList.add('hidden');
         
-        // --- LÓGICA CORRIGIDA ---
-        currentVotacaoAdmin = null; // Reseta o admin
-        btnInserirComissao.classList.add('hidden'); // Esconde o botão por padrão
-        // -------------------------
-        
+        // Reset do texto original do botão
+        btnInserirComissao.textContent = "";
+        btnInserirComissao.dataset.action = "comissao"; 
+
+        const resultadosAntigos = document.querySelectorAll('#sobre-resultados-container');
+        resultadosAntigos.forEach(el => el.remove());
+
+
+        // Reset dos campos para "..." enquanto carrega
         sobreContractAddressInput.value = contractAddress;
         sobreCampus.textContent = '...';
+        sobreCurso.textContent = '...';
         sobreDataAssembleia.textContent = '...';
         sobreDataInscricao.textContent = '...';
         sobreDataVotacao.textContent = '...';
         sobreComissao.innerHTML = '...';
-        sobreCurso.innerHTML = '...'; 
 
         try {
-            // 2. Busca os dados do backend
             const response = await fetch(`${API_URL}/api/votacao-detalhes/${contractAddress}`, {
-                 method: 'GET',
-                 headers: { 'ngrok-skip-browser-warning': 'true' }
+                    method: 'GET',
+                    headers: { 'ngrok-skip-browser-warning': 'true' }
             });
-
-            if (!response.ok) {
-                const errData = await response.json();
-                throw new Error(errData.description || 'Não foi possível carregar os detalhes.');
-            }
-
+            if (!response.ok) throw new Error('Erro ao carregar detalhes.');
             const data = await response.json();
 
-            const agora = new Date();
-            const data_assembleia = new Date(data.data_assembleia_geral);
-
-
+            sobreStatus.textContent = '';
             
-            // --- INÍCIO DA LÓGICA DE ADMIN (CORRIGIDA) ---
-            // (IMPORTANTE: Sua API /api/votacao-detalhes/ DEVE retornar 'admin_wallet_proponente')
-            if (data.admin_wallet_proponente && agora>=data_assembleia) {
-                // 1. Apenas salva o endereço do admin para o clique
+            // --- LÓGICA DO BOTÃO (ADMIN/DATAS) ---
+            if (data.admin_wallet_proponente) {
                 currentVotacaoAdmin = data.admin_wallet_proponente;
-                
-                // 2. MOSTRA O BOTÃO.
-                // A verificação do MetaMask será feita no clique.
                 btnInserirComissao.classList.remove('hidden'); 
-                infoSobreVotacao.textContent=""
-            }else{
-                infoSobreVotacao.textContent="Aguardando Assebléia"
-            }
-            // --- FIM DA LÓGICA DE ADMIN ---
+                let searchTerm = `${contractAddress}`
 
-            // 3. Preenche os dados (lógica existente)
+                let url2 = `${API_URL}/api/votacoes`;
+                if (searchTerm) { url2 += `?search=${encodeURIComponent(searchTerm)}`; }
+                
+                const response2 = await fetch(url2, { credentials: 'include' }); 
+
+                
+                
+                const comissaoExiste = data.comissao && 
+                Array.isArray(data.comissao) && 
+                data.comissao.length > 0 && 
+                !data.comissao[0].includes("Não Definido");
+                
+                if (comissaoExiste) {
+                    const agora = new Date();
+                    // let inicioInscricao = data.data_inicio_chapa ? new Date(data.data_inicio_chapa) : null;
+                    // let inicioVotacao = data.data_inicio_votacao ? new Date(data.data_inicio_votacao) : null;
+
+                    // const inicioInscricao = data.data_inicio_chapa ? new Date(data.data_inicio_chapa) : null;
+                    // const inicioVotacao = data.data_inicio_votacao ? new Date(data.data_inicio_votacao) : null;
+                    let inicioInscricao = null;
+                    let inicioVotacao = null;
+                    let fimInscricao = null;
+                    let fimVotacao = null;
+                    try{
+
+                        inicioInscricao = data.data_inicio_chapa.replace(' ', 'T');
+                        inicioInscricao = new Date(inicioInscricao);
+                        inicioInscricao.setHours(inicioInscricao.getHours() +3);
+
+                        fimInscricao = data.data_fim_chapa.replace(' ', 'T');
+                        fimInscricao = new Date(fimInscricao);
+                        fimInscricao.setHours(fimInscricao.getHours() +3);
+    
+                        inicioVotacao = data.data_inicio_votacao.replace(' ', 'T');
+                        inicioVotacao = new Date(inicioVotacao);
+                        inicioVotacao.setHours(inicioVotacao.getHours() +3);
+
+                        fimVotacao = data.data_fim_votacao.replace(' ', 'T');
+                        fimVotacao = new Date(fimVotacao);
+                        fimVotacao.setHours(fimVotacao.getHours() +3);
+
+
+                    } catch {
+
+                    }
+
+
+
+                    // let dataStr = data.data_inicio_votacao;
+                    // if (dataStr && !dataStr.endsWith('Z')) dataStr += 'Z'; // Força UTC
+                    
+                    // const inicioInscricao = dataStr ? new Date(dataStr) : null;
+
+                    
+
+                    if(agora.getTime() >= fimInscricao && agora.getTime()<fimVotacao && agora.getTime()>= inicioVotacao && inicioVotacao!=null){
+                        btnInserirComissao.textContent = "Votar";
+                        btnInserirComissao.dataset.action = "votar";
+                        btnAvaliarChapas.classList.add('hidden');
+                    }
+                    else if(agora.getTime() < inicioVotacao && agora.getTime()> fimInscricao && inicioVotacao!=null && inicioInscricao!=null){
+                        btnInserirComissao.classList.add('hidden');
+
+                        sobreStatus.textContent = 'Aguardando Votação';
+                    }else if(agora.getTime()>=fimVotacao && fimVotacao!=null){
+                        btnInserirComissao.classList.add('hidden'); // Esconde botões de ação
+                        sobreStatus.textContent = 'Votação Encerrada';
+                        sobreStatus.className = 'text-center font-bold text-red-600 mt-4';
+
+                        // Chama a função para buscar e exibir os resultados
+                        await exibirResultadosNaTelaSobre(contractAddress);
+                    }
+
+                    else if (agora.getTime() >= inicioInscricao && agora.getTime() < fimInscricao && inicioInscricao!=null) {
+                        btnInserirComissao.textContent = "Inscrever Chapa";
+                        btnInserirComissao.dataset.action = "inscrever";
+                        btnInserirComissao.className = "w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300";
+                        btnAvaliarChapas.classList.remove('hidden');
+                    }else{
+                        if (inicioVotacao!=null){
+                            // btnInserirComissao.textContent = "";
+                            // // btnInserirComissao.dataset.action = "datas"; 
+                            // btnInserirComissao.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                            // btnInserirComissao.classList.add('bg-green-600', 'hover:bg-green-700'); 
+                            btnInserirComissao.classList.add('hidden');
+                            sobreStatus.textContent = 'Aguardando Inscrição';
+                        }else{
+
+                            btnInserirComissao.textContent = "Definir Datas";
+                            btnInserirComissao.dataset.action = "datas"; 
+                            btnInserirComissao.classList.remove('bg-blue-600', 'hover:bg-blue-700');
+                            btnInserirComissao.classList.add('bg-green-600', 'hover:bg-green-700'); 
+                        }
+
+
+                    }
+                } else {
+                    btnInserirComissao.textContent = "Inserir Comissão";
+                    btnInserirComissao.dataset.action = "comissao";
+                    btnInserirComissao.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    btnInserirComissao.classList.remove('bg-green-600', 'hover:bg-green-700');
+                }
+            }
+            
+            // --- PREENCHIMENTO DOS DADOS (ESTAVA FALTANDO ISSO) ---
             sobreCampus.textContent = data.campus || 'Não Definido';
-            sobreCurso.textContent = data.curso || 'Não Definido';
+            sobreCurso.textContent = data.curso || 'Não Definido'; // Adicionado Curso
             sobreDataAssembleia.textContent = formatarDataSimples(data.data_assembleia_geral) || 'Não Definido';
             
             sobreDataInscricao.textContent = data.data_inicio_chapa ? 
-                `De ${formatarDataSimples(data.data_inicio_chapa)} até ${formatarDataSimples(data.data_fim_chapa)}` 
+                `${formatarDataSimples(data.data_inicio_chapa)} - ${formatarDataSimples(data.data_fim_chapa)}` 
                 : 'Não Definido';
             
             sobreDataVotacao.textContent = data.data_inicio_votacao ? 
-                `De ${formatarDataSimples(data.data_inicio_votacao)} até ${formatarDataSimples(data.data_fim_votacao)}` 
+                `${formatarDataSimples(data.data_inicio_votacao)} - ${formatarDataSimples(data.data_fim_votacao)}` 
                 : 'Não Definido';
 
             if (data.comissao && Array.isArray(data.comissao)) {
-                sobreComissao.innerHTML = data.comissao.map(membro => `<p>${membro}</p>`).join('');
+                // Usa mb-2 para dar espaço entre os nomes
+                sobreComissao.innerHTML = data.comissao.map(membro => `<p class="mb-2">${membro}</p>`).join('');
             } else {
                 sobreComissao.textContent = 'Não Definido';
             }
 
-            sobreStatus.textContent = ''; // Limpa o status
+            
 
         } catch (err) {
             sobreStatus.textContent = err.message;
             sobreStatus.classList.add('text-red-500');
+        }
+    }
+
+    async function exibirResultadosNaTelaSobre(contractAddress) {
+        const containerSobre = document.querySelector('#about-screen .border-b'); // Pega o container principal de info
+        
+        // Cria div de resultados
+        const divResultados = document.createElement('div');
+        divResultados.id = 'sobre-resultados-container';
+        divResultados.className = 'mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200';
+        divResultados.innerHTML = '<p class="text-center text-gray-600 font-bold animate-pulse">Calculando apuração...</p>';
+        
+        // Insere logo após o bloco de informações
+        containerSobre.parentNode.insertBefore(divResultados, document.getElementById('sobre-status'));
+
+        try {
+            const response = await fetch(`${API_URL}/api/apurar-votos/${contractAddress}`, {
+                method: 'GET',
+                headers: { 'ngrok-skip-browser-warning': 'true' }
+            });
+            
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.description || 'Erro na apuração.');
+
+            // Monta o HTML dos resultados
+            let html = `
+                <h3 class="text-xl font-bold text-gray-800 mb-4 text-center border-b pb-2">Resultado Final</h3>
+                <ul class="space-y-3">
+            `;
+
+            // Ordena por total de votos (maior para menor)
+            data.resultados.sort((a, b) => b.total_votos - a.total_votos);
+
+            data.resultados.forEach((r, index) => {
+                // Destaque para o vencedor (índice 0)
+                const colorClass = index === 0 ? 'text-green-700 font-bold' : 'text-gray-700';
+                const icon = index === 0 ? '🏆' : '•';
+                
+                html += `
+                    <li class="flex justify-between items-center p-2 bg-white rounded shadow-sm">
+                        <span class="${colorClass} text-lg">
+                            ${icon} Chapa ${r.numero_chapa} - ${r.nome_chapa}
+                        </span>
+                        <span class="bg-gray-200 text-gray-800 py-1 px-3 rounded-full font-mono font-bold">
+                            ${r.total_votos} votos
+                        </span>
+                    </li>
+                `;
+            });
+
+            html += `</ul>
+                <p class="text-xs text-center text-gray-500 mt-4 pt-2 border-t">
+                    ${data.mensagem}
+                </p>
+            `;
+
+            divResultados.innerHTML = html;
+
+        } catch (err) {
+            divResultados.innerHTML = `
+                <p class="text-center text-red-500 font-bold">Não foi possível carregar o resultado.</p>
+                <p class="text-center text-xs text-red-400">${err.message}</p>
+            `;
         }
     }
 
@@ -677,6 +976,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    document.getElementById('form-datas-modal').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const statusEl = document.getElementById('modal-datas-status');
+        statusEl.textContent = "Salvando...";
+        statusEl.className = "text-center mt-2 text-sm font-bold text-blue-600";
+        
+        // 1. Captura os dados dos inputs
+        const contractAddress = document.getElementById('modal-datas-contract-address').value;
+        const inicioChapa = document.getElementById('modal-inicio-chapa').value;
+        const fimChapa = document.getElementById('modal-fim-chapa').value;
+        const inicioVotacao = document.getElementById('modal-inicio-votacao').value;
+        const fimVotacao = document.getElementById('modal-fim-votacao').value;
+
+        try {
+            // 2. Envia para o Backend
+            const response = await fetch(`${API_URL}/api/salvar-datas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contract_address: contractAddress,
+                    inicio_chapa: inicioChapa,
+                    fim_chapa: fimChapa,
+                    inicio_votacao: inicioVotacao,
+                    fim_votacao: fimVotacao
+                })
+            });
+
+            // 3. Verifica erros
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.description || "Erro ao salvar datas.");
+            }
+
+            // 4. Sucesso
+            statusEl.textContent = "Datas Salvas com Sucesso!";
+            statusEl.className = "text-center mt-2 text-sm font-bold text-green-600";
+
+            // Fecha o modal e atualiza a tela "Sobre" após 1.5 segundos
+            setTimeout(() => {
+                datasModal.classList.add('hidden');
+                prepareSobreScreen(contractAddress); // Recarrega os dados na tela
+            }, 1500);
+
+        } catch (err) {
+            console.error(err);
+            statusEl.textContent = err.message;
+            statusEl.className = "text-center mt-2 text-sm font-bold text-red-600";
+        }
+    });
+
     // Listener para "Salvar Comissão"
     formComissao.addEventListener('submit', async (evento) => {
         evento.preventDefault();
@@ -698,29 +1048,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // --- Exemplo de como enviar para o backend ---
-            // const response = await fetch(`${API_URL}/api/cadastrar-comissao`, {
-            //     method: 'POST',
-            //     headers: { 'Content-Type': 'application/json' },
-            //     body: JSON.stringify({
-            //         contract_address: contractAddress,
-            //         nomes: nomes,
-            //         matriculas: matriculas,
-            //         emails: emails
-            //     })
-            // });
-            // if (!response.ok) throw new Error('Falha ao salvar no backend.');
-            
+            const response = await fetch(`${API_URL}/api/cadastrar-comissao`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contract_address: contractAddress,
+                    nomes: nomes,
+                    matriculas: matriculas,
+                    emails: emails
+                })
+            });
+            if (!response.ok){
+                const errData = await response.json();
+                throw new Error(`${errData['message']}`);
+            }
             // Simulação de sucesso (Remova isso quando tiver a API)
-            await new Promise(resolve => setTimeout(resolve, 1000)); 
+            // await new Promise(resolve => setTimeout(resolve, 1000)); 
 
             comissaoSaveStatus.textContent = 'Comissão salva com sucesso!';
             comissaoSaveStatus.classList.add('text-green-600');
             
             // Opcional: Voltar para a tela "Sobre" após salvar
             setTimeout(() => {
+
                 showScreen(aboutScreen);
                 // Você pode querer recarregar os dados da tela "Sobre" aqui
-                // ex: prepareSobreScreen(contractAddress);
+                prepareSobreScreen(contractAddress);
             }, 2000);
 
         } catch (err) {
@@ -768,75 +1121,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    btnInserirComissao.addEventListener('click', async () => { // <-- JÁ DEVE SER ASYNC
+    btnAvaliarChapas.addEventListener('click', () => {
+        const contractAddress = sobreContractAddressInput.value;
         
-        // 1. Verifica se o admin foi carregado
-        if (!currentVotacaoAdmin) {
-            alert("Erro: Endereço do admin não encontrado. Recarregue a página.");
-            return;
-        }
-
-        // 2. Verifica se o MetaMask está instalado
-        if (typeof window.ethereum === 'undefined') {
-            alert("Por favor, instale o MetaMask para executar esta ação.");
-            return;
-        }
-
-        let userAddress;
-        try {
-            // 3. Pede para o usuário conectar (ABRE O POP-UP)
-            const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-            if (!accounts || accounts.length === 0) {
-                alert("Você precisa conectar uma carteira para continuar.");
-                return;
-            }
-            userAddress = accounts[0];
-
-        } catch (err) {
-            console.error("Erro ao conectar MetaMask:", err);
-            if (err.code === 4001) {
-                alert("Você rejeitou a conexão com o MetaMask.");
-            } else {
-                alert("Erro ao conectar MetaMask.");
-            }
-            return;
-        }
-
-        // 4. Compara o endereço conectado com o admin (usa ethers.getAddress)
-        const checksumAdmin = ethers.getAddress(currentVotacaoAdmin);
-        const checksumUser = ethers.getAddress(userAddress);
-
-        if (checksumUser === checksumAdmin) {
-            // SUCESSO! É O ADMIN.
-            // Limpa o container e adiciona o primeiro membro
-            listaComissaoContainer.innerHTML = '';
-            contadorComissao = 0; // Reseta o contador
-            adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
-            
-            comissaoSaveStatus.textContent = '';
-            showScreen(comissaoCadastroScreen);
-        } else {
-            // FALHA! NÃO É O ADMIN.
-            alert(`Acesso Negado.\n\nA carteira conectada (${checksumUser.substring(0, 6)}...${checksumUser.slice(-4)}) \nnão é a administradora desta votação (${checksumAdmin.substring(0, 6)}...${checksumAdmin.slice(-4)}).`);
-        }
+        // Abre o pop-up do Google com o modo 'comissao'
+        const authUrl = `${API_URL}/api/auth/google?contract_address=${contractAddress}&mode=comissao`;
+        
+        // avaliarStatus.textContent = "Aguardando autenticação da comissão...";
+        avaliarStatus.textContent = "";
+        // Opcional: mostrar algum feedback visual de carregamento
+        window.open(authUrl, '_blank', 'width=500,height=600');
     });
 
-    // Botão na tela "Sobre" que ABRE a tela de "Inserir Comissão"
-    // btnInserirComissao.addEventListener('click', () => {
-    //     // Limpa o container e adiciona o primeiro membro
-    //     listaComissaoContainer.innerHTML = '';
-    //     contadorComissao = 0; // Reseta o contador
-    //     adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
-        
-    //     comissaoSaveStatus.textContent = '';
-    //     showScreen(comissaoCadastroScreen);
-    // });
+    btnBackFromAvaliar.addEventListener('click', () => {
+        showScreen(aboutScreen);
+    });
 
-    // Botão "Voltar" DENTRO da tela "Inserir Comissão"
-    // btnBackToSobre.addEventListener('click', () => {
-    //     // Ele deve voltar para a tela "Sobre" (about-screen)
-    //     showScreen(aboutScreen); 
-    // });
 
     // --- Lógica Tela 5 (Votar) ---
     function prepareVotarScreen(contractAddress, pollName) {
@@ -939,6 +1239,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 votarAuthStatus.textContent = err.message;
                 votarAuthStatus.classList.add('text-red-500');
                 if(btnGoogleLogin) { btnGoogleLogin.disabled = false; }
+            }
+        }
+        if (event.data === 'auth_comissao_success') {
+             try {
+                // Busca os dados da sessão que o backend salvou
+                const response = await fetch(`${API_URL}/api/get-comissao-data`, { credentials: 'include' });
+                const data = await response.json();
+                
+                if (!data.autenticado) throw new Error("Falha na autenticação.");
+
+                // Sucesso! Mostra a tela de avaliação
+                avaliarWelcomeMsg.textContent = `Bem-vindo(a), ${data.membro_nome}. Avalie as candidaturas abaixo.`;
+                
+                // Busca e renderiza as chapas pendentes
+                await fetchAndRenderChapasPendentes(data.contract_address);
+                
+                showScreen(avaliarChapasScreen);
+
+            } catch (err) {
+                alert("Erro ao acessar área da comissão: " + err.message);
             }
         }
     });
@@ -1051,6 +1371,99 @@ document.addEventListener('DOMContentLoaded', () => {
             votarVoteStatus.classList.add('text-red-500');
             btnSubmitVoto.disabled = false;
             btnSubmitVoto.textContent = 'Enviar Voto (Grátis)';
+        }
+    });
+
+    async function fetchAndRenderChapasPendentes(contractAddress) {
+        listaChapasPendentes.innerHTML = '<p class="text-center text-gray-500">Carregando...</p>';
+        
+        try {
+            const response = await fetch(`${API_URL}/api/chapas-pendentes/${contractAddress}`, {
+                method: 'GET',
+                headers: {
+                    // Este cabeçalho é a chave mágica para o Ngrok liberar a API
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            });
+            // ---------------------
+
+            if (!response.ok) {
+                // Se der erro (ex: 404 ou 500), tenta ler o erro do JSON ou texto
+                const text = await response.text(); 
+                throw new Error(text || 'Erro na requisição');
+            }
+            
+            const chapas = await response.json();
+
+            listaChapasPendentes.innerHTML = '';
+
+            if (chapas.length === 0) {
+                listaChapasPendentes.innerHTML = '<p class="text-center text-gray-500">Nenhuma chapa pendente de avaliação.</p>';
+                return;
+            }
+
+            chapas.forEach(chapa => {
+                const card = document.createElement('div');
+                card.className = "border border-gray-300 rounded-lg p-4 bg-gray-50 shadow-sm";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-bold text-gray-800">Chapa ${chapa.numero}: ${chapa.nome}</h3>
+                    </div>
+                    <p class="text-gray-700 text-sm mb-4 bg-white p-3 rounded border">${chapa.proposta}</p>
+                    <div class="flex gap-3">
+                        <button class="btn-aprovar flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition" data-id="${chapa.id}">
+                            Aprovar
+                        </button>
+                        <button class="btn-rejeitar flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition" data-id="${chapa.id}">
+                            Rejeitar
+                        </button>
+                    </div>
+                `;
+                listaChapasPendentes.appendChild(card);
+            });
+
+        } catch (err) {
+            listaChapasPendentes.innerHTML = `<p class="text-center text-red-500">Erro ao buscar chapas: ${err.message}</p>`;
+        }
+    }
+
+    // Delegação de eventos para os botões Aprovar/Rejeitar
+    listaChapasPendentes.addEventListener('click', async (e) => {
+        const target = e.target;
+        const chapaId = target.dataset.id;
+        if (!chapaId) return;
+
+        let aprovado = false;
+        if (target.classList.contains('btn-aprovar')) aprovado = true;
+        else if (target.classList.contains('btn-rejeitar')) aprovado = false;
+        else return; // Clicou fora dos botões
+
+        if (!confirm(`Tem certeza que deseja ${aprovado ? 'APROVAR' : 'REJEITAR'} esta chapa?`)) return;
+
+        // UI Feedback
+        target.disabled = true;
+        target.textContent = "Processando...";
+
+        try {
+            const response = await fetch(`${API_URL}/api/julgar-chapa`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chapa_id: chapaId, aprovado: aprovado })
+            });
+
+            const resData = await response.json();
+            if (!response.ok) throw new Error(resData.description || "Erro ao processar.");
+
+            alert(resData.message);
+            
+            // Recarrega a lista (remove o card processado)
+            const contractAddress = sobreContractAddressInput.value; // Pega o endereço atual
+            fetchAndRenderChapasPendentes(contractAddress);
+
+        } catch (err) {
+            alert("Erro: " + err.message);
+            target.disabled = false;
+            target.textContent = aprovado ? "Aprovar" : "Rejeitar";
         }
     });
 
