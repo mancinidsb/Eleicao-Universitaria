@@ -7,3 +7,4 @@ unidecode
 py-solc-x
 phe
 beautifulsoup4
+python-dotenv

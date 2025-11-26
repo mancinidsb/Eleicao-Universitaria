@@ -16,7 +16,11 @@ from unidecode import unidecode
 from datetime import datetime
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from dotenv import load_dotenv
+
 from raspagem import *
+
+load_dotenv()
 
 # FIXED_REDIRECT_URI = "https://ballastic-latricia-delectably.ngrok-free.dev/api/autenticar-callback"
 FIXED_REDIRECT_URI = "http://127.0.0.1:5000/api/autenticar-callback"
@@ -44,10 +48,17 @@ app.config.update(
 )
 
 # ... (Toda a sua configuração de WEB3 e Google OAuth) ...
-RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/8FaeERMnNWGASM_ePLx7I"
-_RELAYER_ADDRESS_RAW = "0x21dcfc33545acecf7bffa27b33261deeb6667622" 
-RELAYER_PRIVATE_KEY = "4910711ef868cdbeee8ff20ef7787b4402f609ba1c03f9b05db4c97cb396b53d"
-CONTRACT_JSON_PATH = 'contract.json'
+# RPC_URL = "https://eth-sepolia.g.alchemy.com/v2/8FaeERMnNWGASM_ePLx7I"
+# _RELAYER_ADDRESS_RAW = "0x21dcfc33545acecf7bffa27b33261deeb6667622" 
+# RELAYER_PRIVATE_KEY = "4910711ef868cdbeee8ff20ef7787b4402f609ba1c03f9b05db4c97cb396b53d"
+# CONTRACT_JSON_PATH = 'contract.json'
+
+RPC_URL = os.getenv("RPC_URL")
+_RELAYER_ADDRESS_RAW = os.getenv("_RELAYER_ADDRESS_RAW")
+RELAYER_PRIVATE_KEY = os.getenv("RELAYER_PRIVATE_KEY")
+CONTRACT_JSON_PATH = os.getenv("CONTRACT_JSON_PATH")
+
+
 # ... (carregamento do ABI/Bytecode) ...
 if not os.path.exists(CONTRACT_JSON_PATH):
     print("ERRO: contract.json não encontrado.")
@@ -62,7 +73,9 @@ with open(CONTRACT_JSON_PATH, 'r') as f:
 web3 = Web3(Web3.HTTPProvider(RPC_URL))
 RELAYER_ADDRESS = web3.to_checksum_address(_RELAYER_ADDRESS_RAW)
 
-CLIENT_SECRETS_FILE = "client_secret.json"
+# CLIENT_SECRETS_FILE = "client_secret.json"
+CLIENT_SECRETS_FILE = os.getenv("CLIENT_SECRETS_FILE")
+
 if not os.path.exists(CLIENT_SECRETS_FILE):
     print(f"ERRO: {CLIENT_SECRETS_FILE} não encontrado.")
     exit()
