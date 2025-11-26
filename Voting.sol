@@ -75,6 +75,15 @@ contract Voting {
         // O contrato começa 'Pendente' até o Relayer 'ligá-lo'.
         estadoAtual = EstadoVotacao.Pendente;
     }
+    
+    function getDetalhesVotacao() external view returns (
+        address _chapaAtual,
+        string memory _campus,
+        string memory _curso,
+        string memory _dataAssembleia
+    ) {
+        return (chapa_atual, campus, curso, data_assembleia);
+    }
 
     // --- MODIFICADOR (REGRA DE ACESSO) ---
 

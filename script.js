@@ -82,7 +82,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- API URL ---
     // Mude para o seu URL do NGROK ou http://127.0.0.1:5000
-    const API_URL = 'https://ballastic-latricia-delectably.ngrok-free.dev';
+    // const API_URL = 'https://ballastic-latricia-delectably.ngrok-free.dev';
+    const API_URL = 'http://127.0.0.1:5000';
             
     // --- Seletores das Telas ---
     const homeScreen = document.getElementById('home-screen');
@@ -120,18 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const createPollForm = document.getElementById('create-poll-form');
     const walletAddressInput = document.getElementById('wallet-address');
     const btnSubmitPoll = document.getElementById('btn-submit-poll');
-    // const data_inicio_chapa = document.getElementById('data-inicio-chapa');
-    // const data_fim_chapa = document.getElementById('data-fim-chapa');
-    // const data_inicio_votacao = document.getElementById('data-inicio-votacao');
-    // const data_fim_votacao = document.getElementById('data-fim-votacao');
-    // const agora = new Date();
-    // data_inicio_chapa.value = formatarDataParaInput(agora);
-    // agora.setMinutes(agora.getMinutes() +5);
-    // data_fim_chapa.value = formatarDataParaInput(agora); 
-    // agora.setMinutes(agora.getMinutes() + 5);
-    // data_inicio_votacao.value = formatarDataParaInput(agora);
-    // agora.setMinutes(agora.getMinutes() + 10);
-    // data_fim_votacao.value = formatarDataParaInput(agora);
     const avaliarChapasScreen = document.getElementById('avaliar-chapas-screen');
     const listaChapasPendentes = document.getElementById('lista-chapas-pendentes');
     const avaliarStatus = document.getElementById('avaliar-status');
@@ -370,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         votacoesStatus.textContent = 'Carregando votações...';
         // debugger;
         try {
-            let url = 'https://ballastic-latricia-delectably.ngrok-free.dev/api/votacoes'; 
+            let url = `${API_URL}/api/votacoes`; 
             if (searchTerm) { url += `?search=${encodeURIComponent(searchTerm)}`; }
             
             // Inclui 'credentials' para que a sessão do Flask funcione
@@ -405,9 +394,6 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let botoesHTML = '';
 
-            // let data_fim_chapa = new Date(votacao.data_fim_chapa);
-            // let data_inicio_votacao = new Date(votacao.data_inicio_votacao);
-            // let data_fim_votacao = new Date(votacao.data_fim_votacao);
 
             const options = {
                 year: '2-digit',
@@ -419,9 +405,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 timeZone: 'UTC'  // ESSENCIAL: Usa o horário UTC (GMT) original
             };
 
-            // data_fim_chapa = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_chapa);
-            // data_inicio_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_inicio_votacao);
-            // data_fim_votacao = new Intl.DateTimeFormat('pt-BR', options).format(data_fim_votacao);
 
             let data_final = '';
 
@@ -612,19 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // if (checksumUser === checksumAdmin) {
-        //     // SUCESSO! É O ADMIN.
-        //     // Limpa o container e adiciona o primeiro membro
-        //     listaComissaoContainer.innerHTML = '';
-        //     contadorComissao = 0; // Reseta o contador
-        //     adicionarBlocoMembro(); // Adiciona o Bloco "Membro 1"
-            
-        //     comissaoSaveStatus.textContent = '';
-        //     showScreen(comissaoCadastroScreen);
-        // } 
-        // FALHA! NÃO É O ADMIN.
-        // alert(`Acesso Negado.\n\nA carteira conectada (${checksumUser.substring(0, 6)}...${checksumUser.slice(-4)}) \nnão é a administradora desta votação (${checksumAdmin.substring(0, 6)}...${checksumAdmin.slice(-4)}).`);
-        
+      
     });
 
     // --- MUDANÇA: Atualizado o listener de clique para a apuração ---
@@ -744,11 +715,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (comissaoExiste) {
                     const agora = new Date();
-                    // let inicioInscricao = data.data_inicio_chapa ? new Date(data.data_inicio_chapa) : null;
-                    // let inicioVotacao = data.data_inicio_votacao ? new Date(data.data_inicio_votacao) : null;
-
-                    // const inicioInscricao = data.data_inicio_chapa ? new Date(data.data_inicio_chapa) : null;
-                    // const inicioVotacao = data.data_inicio_votacao ? new Date(data.data_inicio_votacao) : null;
+                    let dataComissao = null;
                     let inicioInscricao = null;
                     let inicioVotacao = null;
                     let fimInscricao = null;
@@ -758,6 +725,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         inicioInscricao = data.data_inicio_chapa.replace(' ', 'T');
                         inicioInscricao = new Date(inicioInscricao);
                         inicioInscricao.setHours(inicioInscricao.getHours() +3);
+
+                        dataComissao = data.data_assembleia_geral.replace(' ', 'T');
+                        dataComissao = new Date(dataComissao);
+                        dataComissao.setHours(dataComissao.getHours() +3);
 
                         fimInscricao = data.data_fim_chapa.replace(' ', 'T');
                         fimInscricao = new Date(fimInscricao);
@@ -777,12 +748,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
 
 
-
-                    // let dataStr = data.data_inicio_votacao;
-                    // if (dataStr && !dataStr.endsWith('Z')) dataStr += 'Z'; // Força UTC
-                    
-                    // const inicioInscricao = dataStr ? new Date(dataStr) : null;
-
                     
 
                     if(agora.getTime() >= fimInscricao && agora.getTime()<fimVotacao && agora.getTime()>= inicioVotacao && inicioVotacao!=null){
@@ -790,6 +755,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         btnInserirComissao.dataset.action = "votar";
                         btnAvaliarChapas.classList.add('hidden');
                     }
+
                     else if(agora.getTime() < inicioVotacao && agora.getTime()> fimInscricao && inicioVotacao!=null && inicioInscricao!=null){
                         btnInserirComissao.classList.add('hidden');
 
@@ -801,7 +767,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                         // Chama a função para buscar e exibir os resultados
                         await exibirResultadosNaTelaSobre(contractAddress);
-                    }
+                    } 
 
                     else if (agora.getTime() >= inicioInscricao && agora.getTime() < fimInscricao && inicioInscricao!=null) {
                         btnInserirComissao.textContent = "Inscrever Chapa";
@@ -810,10 +776,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         btnAvaliarChapas.classList.remove('hidden');
                     }else{
                         if (inicioVotacao!=null){
-                            // btnInserirComissao.textContent = "";
-                            // // btnInserirComissao.dataset.action = "datas"; 
-                            // btnInserirComissao.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                            // btnInserirComissao.classList.add('bg-green-600', 'hover:bg-green-700'); 
                             btnInserirComissao.classList.add('hidden');
                             sobreStatus.textContent = 'Aguardando Inscrição';
                         }else{
@@ -827,10 +789,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     }
                 } else {
-                    btnInserirComissao.textContent = "Inserir Comissão";
-                    btnInserirComissao.dataset.action = "comissao";
-                    btnInserirComissao.classList.add('bg-blue-600', 'hover:bg-blue-700');
-                    btnInserirComissao.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    const agora = new Date();
+                    
+                    let dataComissao = data.data_assembleia_geral.replace(' ', 'T');
+                    dataComissao = new Date(dataComissao);
+                    dataComissao.setHours(dataComissao.getHours() +3);
+
+                    if (agora.getTime()<dataComissao && dataComissao!=null){
+                        btnInserirComissao.classList.add('hidden');
+                        sobreStatus.textContent = 'Aguardando Comissão';
+                    }else{
+
+                        btnInserirComissao.textContent = "Inserir Comissão";
+                        btnInserirComissao.dataset.action = "comissao";
+                        btnInserirComissao.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                        btnInserirComissao.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    }
                 }
             }
             

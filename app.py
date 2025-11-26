@@ -18,7 +18,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 
 from raspagem import *
 
-FIXED_REDIRECT_URI = "https://ballastic-latricia-delectably.ngrok-free.dev/api/autenticar-callback"
+# FIXED_REDIRECT_URI = "https://ballastic-latricia-delectably.ngrok-free.dev/api/autenticar-callback"
+FIXED_REDIRECT_URI = "http://127.0.0.1:5000/api/autenticar-callback"
 
 # --- NOVA IMPORTAÇÃO ---
 from phe import paillier
@@ -381,7 +382,7 @@ def get_votacoes():
                             estado_contrato_str = "Votação Aberta"
                             estado_contrato_int=2
                             nonce = web3.eth.get_transaction_count(RELAYER_ADDRESS)
-                            tx = contrato_instance.functions.iniciarVotacao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 300000})
+                            tx = contrato_instance.functions.iniciarVotacao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 3000000})
                             signed_tx = web3.eth.account.sign_transaction(tx, private_key=RELAYER_PRIVATE_KEY)
                             tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
                             tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
@@ -393,7 +394,7 @@ def get_votacoes():
                         else:
                             estado_contrato_str = "Votação Encerrada"
                             nonce = web3.eth.get_transaction_count(RELAYER_ADDRESS)
-                            tx = contrato_instance.functions.encerrarVotacao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 300000})
+                            tx = contrato_instance.functions.encerrarVotacao().build_transaction({'from': RELAYER_ADDRESS, 'nonce': nonce, 'gas': 3000000})
                             signed_tx = web3.eth.account.sign_transaction(tx, private_key=RELAYER_PRIVATE_KEY)
                             tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
                             tx_receipt = web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
@@ -513,34 +514,7 @@ def auth_google():
     session['state'] = state
     return redirect(authorization_url)
 
-# @app.route('/api/auth/google')
-# def auth_google():
-#     # ... (código idêntico) ...
-#     contract_address = request.args.get('contract_address')
-#     matricula = request.args.get('matricula')
-#     if not contract_address or not matricula:
-#         abort(400, description="Matrícula e endereço do contrato são necessários.")
-    
-#     votacao = Votacao.query.filter_by(contract_address=contract_address).first()
-#     if not votacao: abort(404, description="Votação não encontrada.")
-    
-#     mapa_alunos = _simular_scraping_sigaa(votacao.sigaa_link)
-#     if matricula not in mapa_alunos:
-#         abort(403, description="Matrícula não encontrada na lista pública.")
-    
-#     agora = datetime.now()
-#     if agora < votacao.data_inicio_votacao:
-#         return "<h1>Erro: O período de votação ainda não começou.</h1>", 403
-#     if agora > votacao.data_fim_votacao:
-#         return "<h1>Erro: O período de votação já encerrou.</h1>", 403
-        
-#     session['contract_address'] = contract_address
-#     session['matricula'] = matricula
-#     session['nome_sigaa_normalizado'] = normalize_name(mapa_alunos[matricula])
-#     flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
-#     authorization_url, state = flow.authorization_url()
-#     session['state'] = state
-#     return redirect(authorization_url)
+
 
 # --- Rota 6 (Callback) (ATUALIZADA) ---
 
@@ -660,70 +634,7 @@ def autenticar_callback():
         print(f"Erro no callback do Google: {e}")
         return f"<h1>Erro interno do servidor: {e}</h1><script>window.close();</script>", 500
 
-# @app.route('/api/autenticar-callback')
-# def autenticar_callback():
-#     try:
-#         if request.args.get('state') != session.get('state'): abort(403, "Erro de estado (CSRF).")
-#         flow = Flow.from_client_secrets_file(CLIENT_SECRETS_FILE, scopes=SCOPES, redirect_uri=url_for('autenticar_callback', _external=True))
-#         flow.fetch_token(authorization_response=request.url)
-#         credentials = flow.credentials
-#         id_info = id_token.verify_oauth2_token(credentials.id_token, google_requests.Request(), GOOGLE_CLIENT_ID)
-#         str_script=""
-#         email_google = id_info.get('email')
-#         dominio_google = id_info.get('hd')
-#         nome_google = id_info.get('name')
-        
-#         if dominio_google != "ufpi.edu.br":
-#              return f"<h1>Erro: Apenas e-mails @ufpi.edu.br são permitidos. Tente novamente.</h>{str_script}", 403
 
-#         matricula = session.get('matricula')
-#         contract_address = session.get('contract_address')
-#         nome_sigaa_normalizado = session.get('nome_sigaa_normalizado')
-#         nome_google_normalizado = normalize_name(nome_google)
-        
-#         if nome_sigaa_normalizado not in nome_google_normalizado and nome_google_normalizado not in nome_sigaa_normalizado:
-#             return f"<h1>Erro: O nome da sua conta Google ({nome_google}) não corresponde ao nome da matrícula ({nome_sigaa_normalizado}).</h1>{str_script}", 403
-
-#         nullifier_hash = _get_nullifier(matricula)
-#         nullifier_hash_bytes = bytes.fromhex(nullifier_hash.replace("0x", ""))
-#         contrato = get_contract_instance(contract_address)
-#         if not contrato: abort(500, "Falha ao carregar o contrato.")
-        
-#         ja_votou = contrato.functions.nullifiersUsados(nullifier_hash_bytes).call()
-#         if ja_votou:
-#             return f"<h1>Erro: Esta matrícula já foi usada para votar.</h1>{str_script}", 403
-        
-#         estado_contrato = contrato.functions.estadoAtual().call()
-#         if estado_contrato != 2: # 2 = Votacao
-#             return f"<h1>Erro: A votação não está aberta no contrato.</h1>{str_script}", 403
-
-#         votacao = Votacao.query.filter_by(contract_address=contract_address).first()
-#         mapa_alunos = _simular_scraping_sigaa(votacao.sigaa_link)
-#         lista_completa_matriculas = list(mapa_alunos.keys())
-#         all_leaves = _get_all_leaves(lista_completa_matriculas)
-#         tree_levels = _build_tree_levels(all_leaves)
-#         merkle_proof = _get_merkle_proof(nullifier_hash, tree_levels)
-#         chapas_db = Chapa.query.filter_by(votacao_id=votacao.id).order_by(Chapa.numero_chapa.asc()).all()
-#         chapas_json = [{"numero": c.numero_chapa, "nome": c.nome_chapa, "proposta": c.proposta} for c in chapas_db]
-
-#         # --- PREPARA OS DADOS PARA O FRONTEND ---
-#         session['vote_data'] = {
-#             "autenticado": True, 
-#             "merkleProof": merkle_proof, 
-#             "nullifierHash": f"0x{nullifier_hash}",
-#             "chapas": chapas_json, 
-#             "contract_address": contract_address,
-#             "aluno_info": {"email": email_google, "nome": nome_google},
-            
-#             # --- ENVIA A CHAVE PÚBLICA PARA O FRONTEND ---
-#             "paillier_n": votacao.paillier_n,
-#             "paillier_g": votacao.paillier_g,
-#             "num_chapas": len(chapas_json) # Informa ao frontend o tamanho do array
-#         }
-#         return "<script>window.opener.postMessage('auth_success', '*'); window.close();</script>"
-#     except Exception as e:
-#         print(f"Erro no callback do Google: {e}")
-#         return f"<h1>Erro interno do servidor: {e}</h1><script>window.close();</script>", 500
 
 # --- Rota 7 (Get Vote Data) (ATUALIZADA) ---
 @app.route('/api/get-vote-data')
@@ -881,19 +792,7 @@ def get_votacao_detalhes(contract_address):
         if not votacao:
             abort(404, description="Votação não encontrada.")
         
-        # ATENÇÃO: A "Comissão Eleitoral" não está salva no seu banco de dados
-        # no modelo 'Votacao'.
-        #
-        # Estou retornando uma lista de exemplo (placeholder) para 
-        # corresponder ao que o frontend espera.
-        #
-        # Para isso funcionar de verdade, você precisaria adicionar
-        # um novo campo/tabela no BD para salvar a comissão.
-        # comissao_placeholder = [
-        #     "Prof. Dr. Exemplo Silva (Presidente)",
-        #     "Téc. Exemplo Santos (Mesário)",
-        #     "Aluno Exemplo Souza (Mesário)"
-        # ]
+  
         membros_comissao = Comissao.query.filter_by(votacao_id=votacao.id).all()
         if membros_comissao:
             comissao_formatada = [f"{membro.nome}<br>({membro.email})" for membro in membros_comissao]
@@ -901,10 +800,6 @@ def get_votacao_detalhes(contract_address):
             comissao_formatada = ["Não Definido"]
 
 
-        # Nota: Os campos de data (chapa, votacao) podem vir nulos (None)
-        # se eles não foram salvos durante a criação da votação 
-        # (pois você comentou essas linhas na rota /api/criar-votacao).
-        # O frontend que sugeri já está preparado para tratar isso.
         
         return jsonify({
             "campus": votacao.campus,
@@ -1122,11 +1017,6 @@ def salvar_datas():
 
 if __name__ == '__main__':
     with app.app_context():
-        # ATENÇÃO: Isso cria as novas colunas e tabelas.
-        # Delete seu arquivo 'votacoes.db' uma última vez para
-        # que as novas colunas (paillier_n, etc) e a tabela (VotoArmazenado)
-        # sejam criadas corretamente.
-        # db.drop_all() # Descomente se precisar recriar tudo
         db.create_all()
     
     app.run(debug=True, port=5000)
