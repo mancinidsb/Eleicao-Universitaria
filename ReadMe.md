@@ -17,6 +17,10 @@ Para rodar este projeto localmente e utilizar o login com Google, é necessário
 8. Clique em **Criar**.
 9. Coloque a key do google (.json) dentro do projeto.
 
+<img width="503" height="294" alt="image" src="https://github.com/user-attachments/assets/dd9309cd-b993-4197-9eb3-ff0898faa919" />
+<img width="503" height="192" alt="image" src="https://github.com/user-attachments/assets/eee5f5dc-eac0-4dce-9c59-e7b2563594f9" />
+
+As duas imagens acima, representam o que inserir nas URL's. Sem isto, a autenticação do Google falhará.
 ### Configurando as Variáveis de Ambiente
 
 Ao finalizar a criação, você receberá um **ID do Cliente** e uma **Chave Secreta do Cliente**. Adicione essas chaves no seu arquivo `.env`:
