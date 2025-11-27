@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Votação</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- Biblioteca Ethers.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.13.1/ethers.umd.min.js" xintegrity="sha512-4sQxQGfEEjM2CZ1aX9G3IbYmF/KsTQGglfobc/2iI/0RJEl57dSH/xL3N05e7t1D/94PzO/x/3cK/lG/2/7Jg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
+    <!-- Fontes -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,6 +22,9 @@
 
     <main class="min-h-screen flex flex-col justify-center items-center p-4 sm:p-8">
         
+        <!-- ============================ -->
+        <!-- TELA 1: HOME (Início)        -->
+        <!-- ============================ -->
         <div id="home-screen" class="w-full max-w-lg text-center">
             <h1 class="text-3xl font-bold text-gray-800 mb-8 text-center">
                 Bem-vindo ao Sistema de Votação
@@ -27,12 +33,15 @@
                 <a href="#" id="btn-show-create" class="w-full sm:w-auto flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 text-center">
                     Criar Votação
                 </a>
-                <a href="#" class="w-full sm:w-auto flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 text-center">
+                <a href="#" id="btn-show-vote" class="w-full sm:w-auto flex-1 bg-gray-700 hover:bg-gray-800 text-white font-bold py-3 px-8 rounded-lg shadow-md transition duration-300 text-center">
                     Participar de Votação
                 </a>
             </div>
         </div>
 
+        <!-- ============================ -->
+        <!-- TELA 2: CRIAR VOTAÇÃO (ATUALIZADA) -->
+        <!-- ============================ -->
         <div id="create-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
             
             <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
@@ -41,235 +50,295 @@
 
             <form id="create-poll-form" class="space-y-4">
                 
+                <!-- 1. Identificação -->
                 <div class="border-b pb-4 mb-4">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">1. Identificação</h3>
-                    
                     <div>
-                        <label for="campus-name" class="block text-sm font-medium text-gray-700 mb-2">
-                            Campus (Ex: Ministro Petrônio Portela)
-                        </label>
-                        <input type="text" id="campus-name" name="campus-name"
-                                placeholder="Ministro Petrônio Portela"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                               required>
+                        <label for="campus-name" class="block text-sm font-medium text-gray-700 mb-2">Campus</label>
+                        <input type="text" id="campus-name" name="campus-name" placeholder="Ministro Petrônio Portela" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
-                    
                     <div class="mt-4">
-                        <label for="curso-name" class="block text-sm font-medium text-gray-700 mb-2">
-                            Centro / Curso (Ex: CCN/Odontologia)
-                        </label>
-                        <input type="text" id="curso-name" name="curso-name"
-                                placeholder="CCN/Odontologia"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                               required>
+                        <label for="curso-name" class="block text-sm font-medium text-gray-700 mb-2">Centro / Curso</label>
+                        <input type="text" id="curso-name" name="curso-name" placeholder="CCN/Odontologia" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="mt-4">
+                        <label for="assembleia-data" class="block text-sm font-medium text-gray-700 mb-2">Data da Assembléia Geral</label>
+                        <!-- <input type="text" id="curso-name" name="curso-name" placeholder="CCN/Odontologia" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required> -->
+                        <input type="datetime-local" id="data-assembleia" name="data-assembleia" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
                 </div>
+                
+                <!--2. Períodos (Datas)
+                <div class="border-b pb-4 mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Períodos</h3>
+                    <div class="space-y-4">
+                         NOVO: Adicionado data de INICIO da chapa 
+                        <div>
+                            <label for="data-inicio-chapa" class="block text-sm font-medium text-gray-700">Início da Inscrição de Chapas:</label>
+                            <input type="datetime-local" id="data-inicio-chapa" name="data-inicio-chapa" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="data-fim-chapa" class="block text-sm font-medium text-gray-700">Fim da Inscrição de Chapas:</label>
+                            <input type="datetime-local" id="data-fim-chapa" name="data-fim-chapa" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="data-inicio-votacao" class="block text-sm font-medium text-gray-700">Início da Votação:</label>
+                            <input type="datetime-local" id="data-inicio-votacao" name="data-inicio-votacao" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="data-fim-votacao" class="block text-sm font-medium text-gray-700">Fim da Votação:</label> 
+                            <input type="datetime-local" id="data-fim-votacao" name="data-fim-votacao" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required> 
+                        </div>
+                    </div>
+                </div> -->
+                    
 
+                <!-- 3. Configuração (Blockchain) -->
                 <div class="border-b pb-4 mb-4">
                     <h3 class="text-lg font-semibold text-gray-700 mb-2">2. Configuração (Blockchain)</h3>
-
                     <div>
-                        <label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">
-                            Link do SIGAA com Alunos Ativos:
-                        </label>
-                        <input type="url" id="sigaa-link" name="sigaa-link"
-                               placeholder="https://sigaa.ufpi.br/..."
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                               required>
+                        <label for="sigaa-link" class="block text-sm font-medium text-gray-700 mb-2">Nome do Curso (SIGAA):</label>
+                        <input type="text" id="sigaa-link" name="sigaa-link" placeholder="Odontologia" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
                     </div>
-
+                    
+                    <!-- O Proponente DEVE conectar a carteira para pagar o gás -->
                     <input type="hidden" id="wallet-address" name="wallet-address">
-
                     <div class="mt-4">
                         <button type="button" id="btn-connect-metamask"
                                 class="w-full flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
-                            
-                            <img 
-                            src="https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg" 
-                            alt="Logo MetaMask" 
-                            class="w-6 h-6 mr-3">
-                            
-                            <span>Conectar Conta (Proponente)</span>
+                            <img src="https://images.ctfassets.net/clixtyxoaeas/4rnpEzy1ATWRKVBOLxZ1Fm/a74dc1eed36d23d7ea6030383a4d5163/MetaMask-icon-fox.svg" alt="Logo MetaMask" class="w-6 h-6 mr-3">
+                            <span>Conectar Conta</span>
                         </button>
                     </div>
-
+                    
                     <div id="metamask-status" class="text-sm text-center font-medium mt-2"></div>
                 </div>
 
-
+                <!-- Botões -->
                 <div>
-                    <button type="submit" id="btn-submit-poll"
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-                            disabled>
-                        Fazer Deploy da Votação
+                    <!-- O botão de submit começa desabilitado -->
+                    <button type="submit" id="btn-submit-poll" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                        Fazer Deploy
                     </button>
-                </div>
-
+                </div> 
                 <button type="button" id="btn-back-home" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">
                     &larr; Voltar para o Início
                 </button>
             </form>
         </div>
+
+        <!-- TELA 4: Saber Mais (Lista/Busca) -->
+        <div id="about-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Sobre a Votação
+            </h2>
+
+            <input type="hidden" id="sobre-contract-address">
+
+            <div class="border-b pb-4 mb-4 space-y-4">
+                
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Campus:</strong>
+                    <span id="sobre-campus" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Curso:</strong>
+                    <span id="sobre-curso" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Data da Assembleia:</strong>
+                    <span id="sobre-data-assembleia" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Período de Inscrição:</strong>
+                    <span id="sobre-data-inscricao" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Período de Votação:</strong>
+                    <span id="sobre-data-votacao" class="text-lg font-semibold text-gray-900">...</span>
+                </div>
+
+                <div>
+                    <strong class="block text-sm font-medium text-gray-700">Comissão Eleitoral:</strong>
+                    <div id="sobre-comissao" class="text-sm font-semibold text-gray-900 mt-1">
+                        ...
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex flex-col gap-3">
+                <div id="info-sobre-votacao" class="block text-sm font-medium text-gray-700">
+                    
+                </div>
+                <button type="button" id="btn-inserir-comissao" class="w-full hidden bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Inserir Comissão
+                </button>
+                <button type="button" id="btn-avaliar-chapas" class="hidden w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                    Avaliar Chapas
+                </button>
+            </div>
+            
+            <div id="sobre-status" class="text-center font-medium text-blue-600 pt-4"></div>
+
+            <button type="button" id="btn-back-to-list-3" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar para a Lista
+            </button>
+        </div>
+
+        <!-- TELA : Cadastrar Comissao  -->
+        <div id="comissao-cadastro-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Cadastrar Comissão Eleitoral
+            </h2>
+
+            <form id="form-comissao">
+                
+                <div id="lista-comissao-container" class="space-y-4">
+                    </div>
+                
+                <div class="mt-4">
+                    <button type="button" id="btn-add-comissao" 
+                            class="w-full flex items-center justify-center bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition duration-300">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+                        Adicionar Aluno
+                    </button>
+                </div>
+
+                <div class="mt-6 border-t pt-4">
+                    <button type="submit" id="btn-salvar-comissao"
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        Salvar Comissão
+                    </button>
+                </div>
+                <div id="comissao-save-status" class="text-sm text-center font-medium mt-2"></div>
+            </form>
+
+            <button type="button" id="btn-back-sobre-votacao" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar para "Sobre"
+            </button>
+        </div>
+        
+        <!-- TELA 3: PARTICIPAR (Lista/Busca) -->
+        <div id="vote-screen" class="w-full max-w-2xl p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            <!-- (Sem mudanças) -->
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Votações Ativas</h2>
+            <form id="search-form" class="flex items-center gap-2 mb-6"><input type="search" id="search-input" placeholder="Buscar por campus, curso ou carteira..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"><button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">Buscar</button></form>
+            <div id="votacoes-list" class="space-y-4"></div>
+            <div id="votacoes-status" class="text-center text-gray-500 mt-4"></div>
+            <button type="button" id="btn-back-home-2" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para o Início</button>
+        </div>
+
+        <!-- TELA 4: INSCREVER CHAPA (Oculta) -->
+        <div id="chapa-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            <!-- (Sem mudanças)-->
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Inscrever Chapa</h2>
+            <form id="chapa-form" class="space-y-4"><input type="hidden" id="chapa-contract-address"><div><label for="chapa-name" class="block text-sm font-medium text-gray-700 mb-2">Nome da Chapa</label><input type="text" id="chapa-name" name="chapa-name" placeholder="Chapa 1 - Renovação Total" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></div><div><label for="chapa-proposal" class="block text-sm font-medium text-gray-700 mb-2">Proposta da Chapa</label><textarea id="chapa-proposal" name="chapa-proposal" rows="5" placeholder="Nossa proposta foca em..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required></textarea></div><div id="chapa-status" class="text-sm text-center font-medium"></div><div><button type="submit" id="btn-submit-chapa" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">Enviar Inscrição</button></div>
+            
+            <button type="button" id="btn-back-to-list" class="w-full mt-2 text-sm text-gray-600 hover:text-gray-800 hover:underline">&larr; Voltar para a Lista</button> 
+            </form> 
+        </div>
+
+        <div id="avaliar-chapas-screen" class="w-full max-w-2xl p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            
+            <h2 class="text-2xl font-bold text-gray-800 mb-2 text-center">
+                Avaliação de Candidaturas
+            </h2>
+            <p class="text-center text-gray-600 mb-6" id="avaliar-welcome-msg">
+                Área restrita da Comissão Eleitoral
+            </p>
+
+            <div id="lista-chapas-pendentes" class="space-y-4">
+                </div>
+            
+            <div id="avaliar-status" class="text-center font-medium mt-4"></div>
+
+            <button type="button" id="btn-back-from-avaliar" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar
+            </button>
+        </div>
+
+        <!-- TELA 5: VOTAR (Oculta) -->
+        <div id="votar-screen" class="w-full max-w-lg p-6 sm:p-8 bg-white rounded-lg shadow-xl hidden">
+            <!-- (Sem mudanças) -->
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center" id="votar-titulo">Votar em [Nome da Votação]</h2>
+            <div id="votar-auth-step">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">1. Autenticação</h3>
+                <p class="text-sm text-gray-600 mb-2">Para votar, precisamos confirmar que você é um aluno ativo. Por favor, insira sua matrícula.</p>
+                <input type="hidden" id="votar-contract-address">
+                <div>
+                    <label for="votar-matricula" class="block text-sm font-medium text-gray-700 mb-2">Sua Matrícula</label>
+                    <input type="text" id="votar-matricula" name="votar-matricula" placeholder="Ex: 20209001234" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" required>
+                </div>
+                <div class="mt-4">
+                    <button type="button" id="btn-google-login" class="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        <svg class="w-5 h-5 mr-3" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C39.712,35.619,44,29.57,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                        Autenticar Matrícula com Google
+                    </button>
+                </div>
+                <div id="votar-auth-status" class="text-sm text-center font-medium"></div>
+            </div>
+            <form id="votar-vote-form" class="space-y-4 hidden">
+                <div class="border-b pb-2">
+                    <h3 class="text-lg font-semibold text-gray-700" id="votar-user-info-titulo">2. Escolha sua Chapa</h3>
+                </div>
+                <div id="votar-chapas-list" class="space-y-2 max-h-60 overflow-y-auto p-1"></div>
+                <div id="votar-vote-status" class="text-sm text-center font-medium"></div>
+                <div>
+                    <button type="submit" id="btn-submit-voto" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
+                        Enviar Voto (Grátis)
+                    </button>
+                </div>
+            </form>
+            <button type="button" id="btn-back-to-list-2" class="w-full mt-6 text-sm text-gray-600 hover:text-gray-800 hover:underline">
+                &larr; Voltar para a Lista
+            </button>
+        </div>
+
     </main>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            
-            // Seleciona os elementos
-            const homeScreen = document.getElementById('home-screen');
-            const createScreen = document.getElementById('create-screen');
-            const btnShowCreate = document.getElementById('btn-show-create');
-            const btnBackHome = document.getElementById('btn-back-home');
-            const btnConnectMetamask = document.getElementById('btn-connect-metamask');
-            const metamaskStatus = document.getElementById('metamask-status');
-            const createPollForm = document.getElementById('create-poll-form');
-            const walletAddressInput = document.getElementById('wallet-address');
-            const btnSubmitPoll = document.getElementById('btn-submit-poll');
+    <div id="datas-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 hidden">
+    <div class="modal-backdrop fixed inset-0 bg-gray-800 bg-opacity-75"></div>
+    <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg p-6 z-10 relative">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6">Definir Datas</h2>
+        <form id="form-datas-modal">
+            <input type="hidden" id="modal-datas-contract-address">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Início Inscrição Chapa</label>
+                    <input type="datetime-local" id="modal-inicio-chapa" name="inicio_chapa" class="w-full border p-2 rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fim Inscrição Chapa</label>
+                    <input type="datetime-local" id="modal-fim-chapa" name="fim_chapa" class="w-full border p-2 rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Início Votação</label>
+                    <input type="datetime-local" id="modal-inicio-votacao" name="inicio_votacao" class="w-full border p-2 rounded" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Fim Votação</label>
+                    <input type="datetime-local" id="modal-fim-votacao" name="fim_votacao" class="w-full border p-2 rounded" required>
+                </div>
+            </div>
+            <div id="modal-datas-status" class="text-center mt-2 text-sm font-bold"></div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" id="btn-fechar-modal" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Cancelar</button>
+                <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Salvar Datas</button>
+            </div>
+        </form>
+        </div>
+    </div>
 
-            // --- Lógica de navegação ---
-            btnShowCreate.addEventListener('click', (evento) => {
-                evento.preventDefault();
-                homeScreen.classList.add('hidden');
-                createScreen.classList.remove('hidden');
-            });
-            btnBackHome.addEventListener('click', () => {
-                createScreen.classList.add('hidden');
-                homeScreen.classList.remove('hidden');
-            });
-
-            // --- Lógica de Conexão MetaMask ---
-            btnConnectMetamask.addEventListener('click', async () => {
-                metamaskStatus.textContent = 'Abrindo o MetaMask...';
-                metamaskStatus.classList.remove('text-red-500', 'text-green-600');
-                metamaskStatus.classList.add('text-blue-600');
-                
-                if (typeof window.ethereum !== 'undefined') {
-                    try {
-                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                        const account = accounts[0];
-                        console.log("Conta conectada:", account);
-
-                        metamaskStatus.textContent = `Conectado: ${account.substring(0, 6)}...${account.substring(account.length - 4)}`;
-                        metamaskStatus.classList.remove('text-blue-600', 'text-red-500');
-                        metamaskStatus.classList.add('text-green-600');
-                        
-                        walletAddressInput.value = account;
-                        btnConnectMetamask.querySelector('span').textContent = 'Conta Conectada';
-                        btnConnectMetamask.disabled = true;
-                        btnSubmitPoll.disabled = false;
-
-                    } catch (err) {
-                        console.error("Erro ao conectar:", err);
-                        let errorMsg = 'Erro ao conectar.';
-                        if (err.code === 4001) { errorMsg = 'Você rejeitou a conexão.'; }
-                        metamaskStatus.textContent = errorMsg;
-                        metamaskStatus.classList.remove('text-blue-600', 'text-green-600');
-                        metamaskStatus.classList.add('text-red-500');
-                    }
-                } else {
-                    metamaskStatus.textContent = 'Erro: Por favor, instale a extensão MetaMask.';
-                    metamaskStatus.classList.remove('text-blue-600', 'text-green-600');
-                    metamaskStatus.classList.add('text-red-500');
-                }
-            });
-
-            // --- Lógica de Submit (Deploy) ---
-            createPollForm.addEventListener('submit', async (evento) => {
-                evento.preventDefault(); 
-                
-                btnSubmitPoll.textContent = 'Enviando...';
-                btnSubmitPoll.disabled = true;
-                metamaskStatus.classList.remove('text-red-500', 'text-green-600');
-                
-                // Lendo TODOS os campos do formulário
-                const sigaaLink = document.getElementById('sigaa-link').value;
-                const adminAddress = walletAddressInput.value;
-                const campusName = document.getElementById('campus-name').value; // NOVO
-                const cursoName = document.getElementById('curso-name').value;  // NOVO
-
-                console.log("Iniciando processo de deploy...");
-
-                try {
-                    // ETAPA 1: Buscar dados do contrato E Merkle Root do Backend Flask
-                    metamaskStatus.textContent = 'Gerando Merkle Root no servidor...';
-                    metamaskStatus.classList.add('text-blue-600');
-                    
-                    const responseInfo = await fetch('http://127.0.0.1:5000/api/prepare-deploy', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ sigaa_link: sigaaLink })
-                    });
-                    
-                    if (!responseInfo.ok) {
-                        const errData = await responseInfo.json();
-                        throw new Error(errData.description || 'Falha ao buscar dados do backend.');
-                    }
-                    
-                    const { abi, bytecode, merkleRoot, relayerAddress } = await responseInfo.json();
-                    
-                    console.log("ABI, Bytecode, MerkleRoot e RelayerAddress recebidos.");
-
-                    // ETAPA 2: Conectar ao MetaMask e preparar o Deploy
-                    metamaskStatus.textContent = 'Abra o MetaMask para aprovar o deploy...';
-                    
-                    const provider = new ethers.BrowserProvider(window.ethereum);
-                    const signer = await provider.getSigner(); 
-                    const factory = new ethers.ContractFactory(abi, bytecode, signer);
-
-                    // ETAPA 3: Fazer o Deploy (Proponente Paga o Gás)
-                    console.log(`Fazendo deploy com os argumentos (MerkleRoot, RelayerAddress)`);
-                    
-                    const contract = await factory.deploy(merkleRoot, relayerAddress);
-
-                    metamaskStatus.textContent = 'Aguardando confirmação da rede...';
-                    await contract.waitForDeployment();
-                    
-                    const contractAddress = await contract.getAddress();
-                    console.log("Contrato implantado com sucesso no endereço:", contractAddress);
-
-                    // ETAPA 4: Salvar o resultado no Backend Flask (ATUALIZADO)
-                    metamaskStatus.textContent = 'Salvando dados no servidor...';
-                    
-                    const responseSave = await fetch('http://127.0.0.1:5000/api/criar-votacao', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            sigaa_link: sigaaLink,
-                            admin_wallet: adminAddress,
-                            contract_address: contractAddress,
-                            campus: campusName, // NOVO: Enviando campus
-                            curso: cursoName    // NOVO: Enviando curso
-                        })
-                    });
-
-                    if (!responseSave.ok) throw new Error('Falha ao salvar dados no backend.');
-                    const dataSave = await responseSave.json();
-                    console.log("Backend respondeu:", dataSave.message);
-                    
-                    // ETAPA 5: Sucesso!
-                    metamaskStatus.textContent = `Votação criada! Contrato: ${contractAddress.substring(0, 6)}...`;
-                    metamaskStatus.classList.remove('text-blue-600', 'text-red-500');
-                    metamaskStatus.classList.add('text-green-600');
-                    btnSubmitPoll.textContent = 'Votação Criada!';
-
-                } catch (err) {
-                    console.error("Erro no processo de deploy:", err);
-                    let errorMsg = 'Erro desconhecido.';
-                    if (err.code === 'ACTION_REJECTED') { 
-                        errorMsg = 'Você rejeitou a transação no MetaMask.';
-                    } else if (err.message) {
-                        errorMsg = err.message;
-                    }
-                    
-                    metamaskStatus.textContent = errorMsg;
-                    metamaskStatus.classList.remove('text-blue-600', 'text-green-600');
-                    metamaskStatus.classList.add('text-red-500');
-                    btnSubmitPoll.textContent = 'Criar Votação';
-                    btnSubmitPoll.disabled = false;
-                }
-            });
-        });
-    </script>
+    <!-- Carrega o arquivo JavaScript externo -->
+    <script src="script.js" type="module" defer></script>
 
 </body>
-</html>
+</html>  
+
+

@@ -1,0 +1,10 @@
+flask
+flask-cors
+flask-sqlalchemy
+web3
+google-auth-oauthlib
+unidecode
+py-solc-x
+phe
+beautifulsoup4
+python-dotenv
